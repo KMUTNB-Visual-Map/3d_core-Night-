@@ -1,203 +1,132 @@
 import * as THREE from "three";
-import { GLTFLoader, type GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 /* ======================
-  SCENE
+   SCENE
 ====================== */
 const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xaec6cf);
 
+/* ======================
+   CAMERA
+====================== */
 const camera = new THREE.PerspectiveCamera(
-  75,
+  60,
   window.innerWidth / window.innerHeight,
   0.1,
   5000
 );
 
-camera.position.set(0.01, 0.10, 0.30);
-camera.lookAt(0, 0, 0);
+// ตำแหน่งคงที่ (ไม่เดิน)
+camera.position.set(4.7, 0.4, -4.2);
+// Default: rotate camera +90° around Y-axis
+camera.rotation.x = Math.PI / 2;
 
 /* ======================
-  RENDERER
+   RENDERER
 ====================== */
-const renderer = new THREE.WebGLRenderer({
-  antialias: true,
-});
+const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 document.body.appendChild(renderer.domElement);
 
-/* ======================
-   CONTROLS
-   CAMERA INFO UI
-====================== */
-const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
-controls.target.set(0, 0, 0);
-const cameraInfoDiv = document.createElement("div");
-cameraInfoDiv.id = "camera-info";
-cameraInfoDiv.style.cssText = `
-  position: fixed;
-  top: 10px;
-  right: 10px;
-  background: rgba(0, 0, 0, 0.7);
-  color: #00ff00;
-  padding: 12px 16px;
-  font-family: monospace;
-  font-size: 14px;
-  border: 1px solid #00ff00;
-  border-radius: 4px;
-  z-index: 999;
-  line-height: 1.6;
-`;
-document.body.appendChild(cameraInfoDiv);
+// OVERLAY: show camera rotation in degrees (top-right)
+const rotationOverlay = document.createElement("div");
+rotationOverlay.style.position = "fixed";
+rotationOverlay.style.top = "12px";
+rotationOverlay.style.right = "12px";
+rotationOverlay.style.background = "rgba(0,0,0,0.6)";
+rotationOverlay.style.color = "#fff";
+rotationOverlay.style.padding = "8px 10px";
+rotationOverlay.style.borderRadius = "6px";
+rotationOverlay.style.fontFamily = "monospace, monospace";
+rotationOverlay.style.fontSize = "13px";
+rotationOverlay.style.lineHeight = "1.2";
+rotationOverlay.style.zIndex = "9999";
+rotationOverlay.style.pointerEvents = "none";
+rotationOverlay.innerText = "X: 0°\nY: 0°\nZ: 0°";
+document.body.appendChild(rotationOverlay);
 
 /* ======================
-   LIGHTING
-   FIRST PERSON CONTROLS
+   LIGHT
 ====================== */
-// แสงทั่วฉาก
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-scene.add(ambientLight);
-const keys = { w: false, a: false, s: false, d: false };
-const moveSpeed = 0.005;
-const velocity = new THREE.Vector3();
-
-// Mouse look
-let isMouseDown = false;
-const euler = new THREE.Euler(0, 0, 0, "YXZ");
-const PI_2 = Math.PI / 2;
-let lastX = 0;
-let lastY = 0;
-
-window.addEventListener("keydown", (e) => {
-  if (e.key.toLowerCase() === "w") keys.w = true;
-  if (e.key.toLowerCase() === "d") keys.a = true;
-  if (e.key.toLowerCase() === "s") keys.s = true;
-  if (e.key.toLowerCase() === "a") keys.d = true;
-});
-
-window.addEventListener("keyup", (e) => {
-  if (e.key.toLowerCase() === "w") keys.w = false;
-  if (e.key.toLowerCase() === "a") keys.d = false;
-  if (e.key.toLowerCase() === "s") keys.s = false;
-  if (e.key.toLowerCase() === "d") keys.a = false;
-});
-
-renderer.domElement.addEventListener("mousedown", () => {
-  isMouseDown = true;
-});
-
-document.addEventListener("mouseup", () => {
-  isMouseDown = false;
-});
-
-document.addEventListener("mousemove", (e) => {
-  if (!isMouseDown) {
-    lastX = e.clientX;
-    lastY = e.clientY;
-    return;
-  }
-  
-  const deltaX = e.clientX - lastX;
-  const deltaY = e.clientY - lastY;
-  
-  lastX = e.clientX;
-  lastY = e.clientY;
-  
-  euler.setFromQuaternion(camera.quaternion);
-  // Euler doesn't have rotateX/rotateY methods in TypeScript; update components directly
-  euler.y -= deltaX * 0.005;
-  euler.x -= deltaY * 0.005;
-  
-  euler.x = Math.max(-PI_2, Math.min(PI_2, euler.x));
-  
-  camera.quaternion.setFromEuler(euler);
-});
-
-function updateMovement() {
-  const moveDir = new THREE.Vector3();
-  
-  // Get camera direction vectors
-  const forward = new THREE.Vector3();
-  const right = new THREE.Vector3();
-  
-  camera.getWorldDirection(forward);
-  forward.y = 0; // Keep movement horizontal
-  forward.normalize();
-  
-  right.crossVectors(new THREE.Vector3(0, 1, 0), forward).normalize();
-  
-  // Apply keyboard input
-  if (keys.w) moveDir.addScaledVector(forward, moveSpeed);
-  if (keys.s) moveDir.addScaledVector(forward, -moveSpeed);
-  if (keys.d) moveDir.addScaledVector(right, moveSpeed);
-  if (keys.a) moveDir.addScaledVector(right, -moveSpeed);
-  
-  // Smooth movement with velocity
-  velocity.lerp(moveDir, 0.2);
-  camera.position.add(velocity);
-}
-
-// แสงเหมือนดวงอาทิตย์
-const sunLight = new THREE.DirectionalLight(0xffffff, 1.2);
-sunLight.position.set(200, 300, 100);
-scene.add(sunLight);
-/* ======================
-   WINDOW RESIZE HANDLER
-====================== */
-window.addEventListener("resize", () => {
-  const width = window.innerWidth;
-  const height = window.innerHeight;
-  
-  camera.aspect = width / height;
-  camera.updateProjectionMatrix();
-  
-  renderer.setSize(width, height);
-});
-
-/* ======================
-   GRID (ช่วยอ้างอิงตำแหน่ง)
-   LIGHT (ขั้นต่ำ)
-====================== */
-const grid = new THREE.GridHelper(1000, 50);
-scene.add(grid);
 scene.add(new THREE.AmbientLight(0xffffff, 1));
 
 /* ======================
-   LOAD CITY MODEL
    LOAD GLB
 ====================== */
 const loader = new GLTFLoader();
-
-loader.load(
-  "/models/city.glb",
-  (gltf: GLTF) => {
-    const city = gltf.scene;
-
-    // ปรับ scale ถ้าจำเป็น
-    city.scale.set(1, 1, 1);
-    city.position.set(0, 0, 0);
-
-    // ตั้งค่า mesh ภายใน
-    city.traverse((obj: THREE.Object3D) => {
-      if ((obj as THREE.Mesh).isMesh) {
-        obj.castShadow = true;
-        obj.receiveShadow = true;
-      }
-    });
-
-    scene.add(city);
-    console.log("City loaded ✅");
-  },
-  undefined,
-  (error: unknown) => {
-    console.error("Failed to load city.glb ❌", error);
-  }
-);
+loader.load("/models/city.glb", (gltf) => {
+  scene.add(gltf.scene);
+  console.log("GLB loaded ✅");
+});
 
 /* ======================
-   RESIZE HANDLER
+   GYRO / DEVICE ORIENTATION
+====================== */
+
+// ขอ permission (จำเป็นมากสำหรับ iOS)
+function requestGyroPermission() {
+  if (
+    typeof DeviceOrientationEvent !== "undefined" &&
+    // @ts-ignore
+    typeof DeviceOrientationEvent.requestPermission === "function"
+  ) {
+    // iOS
+    // @ts-ignore
+    DeviceOrientationEvent.requestPermission().then((state: string) => {
+      if (state === "granted") {
+        window.addEventListener("deviceorientation", onDeviceOrientation);
+        console.log("Gyro permission granted ✅");
+      }
+    });
+  } else {
+    // Android / Desktop
+    window.addEventListener("deviceorientation", onDeviceOrientation);
+    console.log("Gyro permission auto-enabled ✅");
+  }
+}
+
+// Helpers and state for mapping DeviceOrientation -> Three.js quaternion
+const euler = new THREE.Euler(0, 0, 0, "YXZ");
+const zee = new THREE.Vector3(0, 0, 1);
+const q0 = new THREE.Quaternion();
+// -PI/2 around the X axis to make the camera look out the back of the device
+const q1 = new THREE.Quaternion(-Math.sqrt(0.5), 0, 0, Math.sqrt(0.5));
+
+function getScreenOrientation() {
+  if (typeof window.screen !== "undefined" && (window.screen as any).orientation && typeof (window.screen as any).orientation.angle === 'number') {
+    return (window.screen as any).orientation.angle as number;
+  }
+  // fallback for older browsers
+  // @ts-ignore
+  return (window.orientation as number) || 0;
+}
+
+function setObjectQuaternion(quaternion: THREE.Quaternion, alpha: number, beta: number, gamma: number, orient: number) {
+  euler.set(beta, alpha, -gamma, 'YXZ');
+  quaternion.setFromEuler(euler); // orient the device
+  quaternion.multiply(q1); // camera looks out the back of the device, not the top
+  quaternion.multiply(q0.setFromAxisAngle(zee, -orient)); // adjust for screen orientation
+}
+
+function onDeviceOrientation(event: DeviceOrientationEvent) {
+  if (event.alpha === null || event.beta === null || event.gamma === null) {
+    return;
+  }
+  const alpha = THREE.MathUtils.degToRad(event.alpha); // Z
+  const beta = THREE.MathUtils.degToRad(event.beta);   // X'
+  const gamma = THREE.MathUtils.degToRad(event.gamma); // Y'
+  const orient = THREE.MathUtils.degToRad(getScreenOrientation());
+
+  setObjectQuaternion(camera.quaternion, alpha, beta, gamma, orient);
+}
+
+// ต้องให้ user interaction สักครั้ง
+window.addEventListener("click", requestGyroPermission, { once: true });
+
+/* ======================
+   RESIZE
 ====================== */
 window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;
@@ -206,27 +135,17 @@ window.addEventListener("resize", () => {
 });
 
 /* ======================
-   ANIMATION LOOP
    RENDER LOOP
 ====================== */
 function animate() {
-requestAnimationFrame(animate);
-  controls.update();
-  updateMovement();
-  
-  // Update camera info
-  cameraInfoDiv.innerHTML = `
-    <strong>Camera Position</strong><br>
-    X: ${camera.position.x.toFixed(2)}<br>
-    Y: ${camera.position.y.toFixed(2)}<br>
-    Z: ${camera.position.z.toFixed(2)}<br>
-    <br>
-    <strong>Controls</strong><br>
-    W/A/S/D: Walk<br>
-    Mouse Drag: Look Around
-  `;
-  
-renderer.render(scene, camera);
-}
+  requestAnimationFrame(animate);
+  // Update overlay with camera rotation in degrees
+  const deg = THREE.MathUtils.radToDeg;
+  const rx = deg(camera.rotation.x);
+  const ry = deg(camera.rotation.y);
+  const rz = deg(camera.rotation.z);
+  rotationOverlay.innerText = `X: ${rx.toFixed(1)}°\nY: ${ry.toFixed(1)}°\nZ: ${rz.toFixed(1)}°`;
 
+  renderer.render(scene, camera);
+}
 animate();
