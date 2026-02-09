@@ -68,18 +68,21 @@ const YAW_DAMP = 8;
 // gesture
 const PAN_SENS = 0.005;
 const PAN_DEADZONE = 2; // px
-const YAW_LIMIT = Math.PI; // ±180°
 
 /* =====================================================
-   STATE
+   STATE (IMPORTANT)
 ===================================================== */
 let targetZoom = 1;
-let targetYaw = 0;
+
+let targetYaw = 0;     // unbounded
 let currentYaw = 0;
 
 let targetPitch = 0;
 let targetHeight = HEIGHT_MIN;
 let targetFov = FOV_MIN;
+
+// gyro unwrap state
+let lastGyroAlpha: number | null = null;
 
 camera.zoom = targetZoom;
 camera.fov = targetFov;
@@ -146,13 +149,27 @@ new GLTFLoader().load("/models/city.glb", (gltf) => {
 });
 
 /* =====================================================
-   GYRO → TARGET YAW
+   GYRO (DELTA + UNWRAP 360°)
 ===================================================== */
 function onDeviceOrientation(e: DeviceOrientationEvent) {
   if (cameraMode !== "GYRO") return;
   if (e.alpha == null) return;
 
-  targetYaw = THREE.MathUtils.degToRad(e.alpha);
+  const alpha = THREE.MathUtils.degToRad(e.alpha);
+
+  if (lastGyroAlpha === null) {
+    lastGyroAlpha = alpha;
+    return;
+  }
+
+  let delta = alpha - lastGyroAlpha;
+
+  // unwrap 360°
+  if (delta > Math.PI) delta -= Math.PI * 2;
+  if (delta < -Math.PI) delta += Math.PI * 2;
+
+  targetYaw += delta;
+  lastGyroAlpha = alpha;
 }
 
 window.addEventListener(
@@ -201,7 +218,7 @@ window.addEventListener(
     if (cameraMode !== "GESTURE") return;
     e.preventDefault();
 
-    // 1 finger pan
+    // 1 finger pan (UNBOUNDED)
     if (e.touches.length === 1 && isPanning) {
       const x = e.touches[0].clientX;
       const dx = x - lastPanX;
@@ -255,6 +272,13 @@ window.addEventListener("resize", () => {
 });
 
 /* =====================================================
+   HELPERS
+===================================================== */
+function normalizeAngle(rad: number) {
+  return ((rad + Math.PI) % (Math.PI * 2)) - Math.PI;
+}
+
+/* =====================================================
    LOOP (SMOOTH EVERYTHING)
 ===================================================== */
 const clock = new THREE.Clock();
@@ -263,9 +287,13 @@ function animate() {
   requestAnimationFrame(animate);
   const dt = clock.getDelta();
 
-  // smooth yaw
-  targetYaw = THREE.MathUtils.clamp(targetYaw, -YAW_LIMIT, YAW_LIMIT);
-  currentYaw = THREE.MathUtils.damp(currentYaw, targetYaw, YAW_DAMP, dt);
+  // smooth yaw (NO CLAMP)
+  currentYaw = THREE.MathUtils.damp(
+    currentYaw,
+    targetYaw,
+    YAW_DAMP,
+    dt
+  );
 
   // smooth zoom
   camera.zoom = THREE.MathUtils.damp(
@@ -302,7 +330,13 @@ function animate() {
     dt
   );
 
-  camera.rotation.set(BASE_ROTATION.x, currentYaw, 0, "YXZ");
+  camera.rotation.set(
+    BASE_ROTATION.x,
+    normalizeAngle(currentYaw),
+    0,
+    "YXZ"
+  );
+
   camera.updateProjectionMatrix();
 
   overlay.innerText =
