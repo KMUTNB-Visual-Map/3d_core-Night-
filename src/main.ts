@@ -65,24 +65,28 @@ const PITCH_DAMP = 10;
 const FOV_DAMP = 10;
 const YAW_DAMP = 8;
 
-// gesture
+// pan
 const PAN_SENS = 0.005;
-const PAN_DEADZONE = 2; // px
+const PAN_DEADZONE = 2;
 
 /* =====================================================
-   STATE (IMPORTANT)
+   STATE
 ===================================================== */
 let targetZoom = 1;
 
-let targetYaw = 0;     // unbounded
+let targetYaw = 0; // unbounded
 let currentYaw = 0;
 
 let targetPitch = 0;
 let targetHeight = HEIGHT_MIN;
 let targetFov = FOV_MIN;
 
-// gyro unwrap state
+// gyro
 let lastGyroAlpha: number | null = null;
+
+// pc mouse pan
+let isMousePanning = false;
+let lastMouseX = 0;
 
 camera.zoom = targetZoom;
 camera.fov = targetFov;
@@ -100,17 +104,19 @@ document.body.appendChild(renderer.domElement);
    OVERLAY
 ===================================================== */
 const overlay = document.createElement("div");
-overlay.style.position = "fixed";
-overlay.style.top = "12px";
-overlay.style.left = "12px";
-overlay.style.background = "rgba(0,0,0,0.6)";
-overlay.style.color = "#fff";
-overlay.style.padding = "8px 10px";
-overlay.style.borderRadius = "6px";
-overlay.style.fontFamily = "monospace";
-overlay.style.fontSize = "12px";
-overlay.style.pointerEvents = "none";
-overlay.style.zIndex = "9999";
+Object.assign(overlay.style, {
+  position: "fixed",
+  top: "12px",
+  left: "12px",
+  background: "rgba(0,0,0,0.6)",
+  color: "#fff",
+  padding: "8px 10px",
+  borderRadius: "6px",
+  fontFamily: "monospace",
+  fontSize: "12px",
+  pointerEvents: "none",
+  zIndex: "9999",
+});
 document.body.appendChild(overlay);
 
 /* =====================================================
@@ -149,7 +155,7 @@ new GLTFLoader().load("/models/city.glb", (gltf) => {
 });
 
 /* =====================================================
-   GYRO (DELTA + UNWRAP 360°)
+   GYRO (DELTA + UNWRAP)
 ===================================================== */
 function onDeviceOrientation(e: DeviceOrientationEvent) {
   if (cameraMode !== "GYRO") return;
@@ -163,8 +169,6 @@ function onDeviceOrientation(e: DeviceOrientationEvent) {
   }
 
   let delta = alpha - lastGyroAlpha;
-
-  // unwrap 360°
   if (delta > Math.PI) delta -= Math.PI * 2;
   if (delta < -Math.PI) delta += Math.PI * 2;
 
@@ -186,9 +190,9 @@ window.addEventListener(
 );
 
 /* =====================================================
-   MOBILE TOUCH (1 FINGER PAN / 2 FINGER ZOOM)
+   MOBILE TOUCH (PAN / ZOOM)
 ===================================================== */
-let isPanning = false;
+let isTouchPanning = false;
 let lastPanX = 0;
 let lastPinchDist: number | null = null;
 
@@ -202,12 +206,12 @@ window.addEventListener("touchstart", (e) => {
   if (cameraMode !== "GESTURE") return;
 
   if (e.touches.length === 1) {
-    isPanning = true;
+    isTouchPanning = true;
     lastPanX = e.touches[0].clientX;
   }
 
   if (e.touches.length === 2) {
-    isPanning = false;
+    isTouchPanning = false;
     lastPinchDist = pinchDist(e.touches);
   }
 });
@@ -218,26 +222,19 @@ window.addEventListener(
     if (cameraMode !== "GESTURE") return;
     e.preventDefault();
 
-    // 1 finger pan (UNBOUNDED)
-    if (e.touches.length === 1 && isPanning) {
-      const x = e.touches[0].clientX;
-      const dx = x - lastPanX;
-      lastPanX = x;
+    if (e.touches.length === 1 && isTouchPanning) {
+      const dx = e.touches[0].clientX - lastPanX;
+      lastPanX = e.touches[0].clientX;
 
       if (Math.abs(dx) > PAN_DEADZONE) {
         targetYaw -= dx * PAN_SENS;
       }
     }
 
-    // 2 finger zoom
     if (e.touches.length === 2 && lastPinchDist !== null) {
       const d = pinchDist(e.touches);
       targetZoom += (d - lastPinchDist) * 0.002;
-      targetZoom = THREE.MathUtils.clamp(
-        targetZoom,
-        ZOOM_MIN,
-        ZOOM_MAX
-      );
+      targetZoom = THREE.MathUtils.clamp(targetZoom, ZOOM_MIN, ZOOM_MAX);
       lastPinchDist = d;
     }
   },
@@ -245,8 +242,35 @@ window.addEventListener(
 );
 
 window.addEventListener("touchend", () => {
-  isPanning = false;
+  isTouchPanning = false;
   lastPinchDist = null;
+});
+
+/* =====================================================
+   PC MOUSE PAN
+===================================================== */
+window.addEventListener("mousedown", (e) => {
+  if (cameraMode !== "GESTURE") return;
+  if (e.button !== 0) return; // left click
+
+  isMousePanning = true;
+  lastMouseX = e.clientX;
+});
+
+window.addEventListener("mousemove", (e) => {
+  if (!isMousePanning) return;
+  if (cameraMode !== "GESTURE") return;
+
+  const dx = e.clientX - lastMouseX;
+  lastMouseX = e.clientX;
+
+  if (Math.abs(dx) > PAN_DEADZONE) {
+    targetYaw -= dx * PAN_SENS;
+  }
+});
+
+window.addEventListener("mouseup", () => {
+  isMousePanning = false;
 });
 
 /* =====================================================
@@ -279,7 +303,7 @@ function normalizeAngle(rad: number) {
 }
 
 /* =====================================================
-   LOOP (SMOOTH EVERYTHING)
+   LOOP
 ===================================================== */
 const clock = new THREE.Clock();
 
@@ -287,21 +311,9 @@ function animate() {
   requestAnimationFrame(animate);
   const dt = clock.getDelta();
 
-  // smooth yaw (NO CLAMP)
-  currentYaw = THREE.MathUtils.damp(
-    currentYaw,
-    targetYaw,
-    YAW_DAMP,
-    dt
-  );
+  currentYaw = THREE.MathUtils.damp(currentYaw, targetYaw, YAW_DAMP, dt);
 
-  // smooth zoom
-  camera.zoom = THREE.MathUtils.damp(
-    camera.zoom,
-    targetZoom,
-    ZOOM_DAMP,
-    dt
-  );
+  camera.zoom = THREE.MathUtils.damp(camera.zoom, targetZoom, ZOOM_DAMP, dt);
 
   const t = (camera.zoom - ZOOM_MIN) / (ZOOM_MAX - ZOOM_MIN);
 
@@ -323,12 +335,7 @@ function animate() {
     dt
   );
 
-  camera.fov = THREE.MathUtils.damp(
-    camera.fov,
-    targetFov,
-    FOV_DAMP,
-    dt
-  );
+  camera.fov = THREE.MathUtils.damp(camera.fov, targetFov, FOV_DAMP, dt);
 
   camera.rotation.set(
     BASE_ROTATION.x,
