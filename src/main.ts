@@ -28,7 +28,6 @@ const CONFIG = {
   },
   YAW: {
     DAMP: 8,
-    SNAP_RAD: THREE.MathUtils.degToRad(15),
   },
   PAN: {
     SENS: 0.005,
@@ -89,6 +88,24 @@ function wrapDeg360(deg: number) {
 
 function damp(current: number, target: number, lambda: number, dt: number) {
   return THREE.MathUtils.damp(current, target, lambda, dt);
+}
+
+/* ---------- ANGLE DAMPING (KEY FIX) ---------- */
+function shortestAngleDelta(from: number, to: number) {
+  return Math.atan2(
+    Math.sin(to - from),
+    Math.cos(to - from)
+  );
+}
+
+function dampAngle(
+  current: number,
+  target: number,
+  lambda: number,
+  dt: number
+) {
+  const delta = shortestAngleDelta(current, target);
+  return current + delta * (1 - Math.exp(-lambda * dt));
 }
 
 /* =====================================================
@@ -154,7 +171,6 @@ function bindGesture() {
     (e) => {
       e.preventDefault();
 
-      // pinch zoom (all modes)
       if (e.touches.length === 2 && lastPinchDist !== null) {
         const d = pinchDistance(e.touches);
         targetZoom += (d - lastPinchDist) * 0.002;
@@ -229,17 +245,13 @@ function animate() {
   requestAnimationFrame(animate);
   const dt = clock.getDelta();
 
-  const yawWrapped =
-    ((currentYaw % TWO_PI) + TWO_PI) % TWO_PI;
-
-  if (
-    yawWrapped < CONFIG.YAW.SNAP_RAD ||
-    yawWrapped > TWO_PI - CONFIG.YAW.SNAP_RAD
-  ) {
-    currentYaw = targetYaw;
-  } else {
-    currentYaw = damp(currentYaw, targetYaw, CONFIG.YAW.DAMP, dt);
-  }
+  // 🔥 FIXED YAW UPDATE
+  currentYaw = dampAngle(
+    currentYaw,
+    targetYaw,
+    CONFIG.YAW.DAMP,
+    dt
+  );
 
   camera.zoom = damp(camera.zoom, targetZoom, CONFIG.ZOOM.DAMP, dt);
 
