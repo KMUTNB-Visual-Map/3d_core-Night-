@@ -1,8 +1,10 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import CONFIG_JSON from "./config/config.json";
-import { initUI, type CameraMode } from "./ui/ui";
 
+import { initUI, type CameraMode } from "./ui/ui";
+import { bindGyro } from "./controls/gyroController";
+import { bindGesture } from "./controls/gestureController";
 
 /* =====================================================
    CONFIG PARSE
@@ -17,16 +19,10 @@ const CONFIG = {
 };
 
 /* =====================================================
-   PREVENT DEFAULT BROWSER BEHAVIOR
+   PREVENT DEFAULT
 ===================================================== */
 
-function preventBrowserGesture() {
-  document.body.style.touchAction = "none";
-  document.documentElement.style.overflow = "hidden";
-  document.body.style.overflow = "hidden";
-  document.body.style.height = "100vh";
-}
-preventBrowserGesture();
+document.body.style.touchAction = "none";
 
 /* =====================================================
    CORE 3D SETUP
@@ -57,40 +53,6 @@ const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
 dirLight.position.set(50, 100, 50);
 scene.add(dirLight);
 scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 0.6));
-
-/* =====================================================
-   MODEL LOADER WITH FALLBACK
-===================================================== */
-
-function loadCityWithFallback(index = 0) {
-  const cityNames = [
-    "city.glb",
-    "no_roof.glb",
-    "among_us.glb",
-    "old_city.glb",
-    "city4.glb",
-  ];
-
-  if (index >= cityNames.length) {
-    console.error("❌ All city models failed to load.");
-    return;
-  }
-
-  const path = `/models/${cityNames[index]}`;
-
-  new GLTFLoader().load(
-    path,
-    (gltf) => {
-      console.log(`✅ Loaded: ${path}`);
-      scene.add(gltf.scene);
-    },
-    undefined,
-    () => {
-      console.warn(`⚠️ Failed: ${path}`);
-      loadCityWithFallback(index + 1);
-    }
-  );
-}
 
 /* =====================================================
    STATE
@@ -136,84 +98,38 @@ function dampAngle(current: number, target: number, lambda: number, dt: number) 
 }
 
 /* =====================================================
-   CONTROLS
+   CONTROLLERS
 ===================================================== */
 
-function updateGyroYaw(alphaDeg: number) {
-  const alpha = THREE.MathUtils.degToRad(alphaDeg);
-  debugGyroAlpha = alpha;
-  targetYaw = alpha;
-}
+bindGyro({
+  isActive: () => cameraMode === "GYRO",
+  setTargetYaw: (yaw) => {
+    targetYaw = yaw;
+  },
+  setDebugAlpha: (alpha) => {
+    debugGyroAlpha = alpha;
+  },
+});
 
-function bindGyro() {
-  window.addEventListener("deviceorientation", (e) => {
-    if (cameraMode !== "GYRO") return;
-    if (e.alpha == null) return;
-    updateGyroYaw(e.alpha);
-  });
-}
-
-let isTouchPanning = false;
-let lastPanX = 0;
-let lastPinchDist: number | null = null;
-
-function pinchDistance(t: TouchList) {
-  const dx = t[0].clientX - t[1].clientX;
-  const dy = t[0].clientY - t[1].clientY;
-  return Math.hypot(dx, dy);
-}
-
-function bindGesture() {
-  window.addEventListener("touchstart", (e) => {
-    if (e.touches.length === 1 && cameraMode === "GESTURE") {
-      isTouchPanning = true;
-      lastPanX = e.touches[0].clientX;
-    }
-    if (e.touches.length === 2) {
-      isTouchPanning = false;
-      lastPinchDist = pinchDistance(e.touches);
-    }
-  });
-
-  window.addEventListener(
-    "touchmove",
-    (e) => {
-      e.preventDefault();
-
-      if (e.touches.length === 2 && lastPinchDist !== null) {
-        const d = pinchDistance(e.touches);
-        targetZoom += (d - lastPinchDist) * 0.002;
-        targetZoom = THREE.MathUtils.clamp(
-          targetZoom,
-          CONFIG.ZOOM.MIN,
-          CONFIG.ZOOM.MAX
-        );
-        lastPinchDist = d;
-        return;
-      }
-
-      if (cameraMode !== "GESTURE") return;
-
-      if (e.touches.length === 1 && isTouchPanning) {
-        const dx = e.touches[0].clientX - lastPanX;
-        lastPanX = e.touches[0].clientX;
-
-        if (Math.abs(dx) > CONFIG.PAN.DEADZONE) {
-          targetYaw -= dx * CONFIG.PAN.SENS;
-        }
-      }
-    },
-    { passive: false }
-  );
-
-  window.addEventListener("touchend", () => {
-    isTouchPanning = false;
-    lastPinchDist = null;
-  });
-}
+bindGesture({
+  isActive: () => cameraMode === "GESTURE",
+  getZoom: () => targetZoom,
+  setZoom: (z) => {
+    targetZoom = z;
+  },
+  addYaw: (delta) => {
+    targetYaw += delta;
+  },
+  zoomConfig: {
+    MIN: CONFIG.ZOOM.MIN,
+    MAX: CONFIG.ZOOM.MAX,
+  },
+  panSens: CONFIG.PAN.SENS,
+  deadzone: CONFIG.PAN.DEADZONE,
+});
 
 /* =====================================================
-   UI INIT
+   UI
 ===================================================== */
 
 const ui = initUI({
@@ -242,8 +158,38 @@ const ui = initUI({
   },
 });
 
+function loadCityWithFallback(index = 0) {
+  const cityNames = [
+    "city.glb",
+    "no_roof.glb",
+    "among_us.glb",
+    "old_city.glb",
+    "city4.glb",
+  ];
+
+  if (index >= cityNames.length) {
+    console.error("❌ All city models failed to load.");
+    return;
+  }
+
+  const path = `/models/${cityNames[index]}`;
+
+  new GLTFLoader().load(
+    path,
+    (gltf) => {
+      console.log(`✅ Loaded: ${path}`);
+      scene.add(gltf.scene);
+    },
+    undefined,
+    () => {
+      console.warn(`⚠️ Failed: ${path}`);
+      loadCityWithFallback(index + 1);
+    }
+  );
+}
+
 /* =====================================================
-   MAIN LOOP
+   LOOP
 ===================================================== */
 
 const clock = new THREE.Clock();
@@ -303,15 +249,13 @@ function animate() {
   camera.updateProjectionMatrix();
 
   ui.update();
-
   renderer.render(scene, camera);
+  loadCityWithFallback();
 }
 
+
 /* =====================================================
-   INIT
+   MODEL LOADER WITH FALLBACK
 ===================================================== */
 
-bindGyro();
-bindGesture();
 animate();
-loadCityWithFallback();
