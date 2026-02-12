@@ -1,6 +1,8 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import CONFIG_JSON from "./config/config.json";
+import { initUI, type CameraMode } from "./ui/ui";
+
 
 /* =====================================================
    CONFIG PARSE
@@ -57,6 +59,40 @@ scene.add(dirLight);
 scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 0.6));
 
 /* =====================================================
+   MODEL LOADER WITH FALLBACK
+===================================================== */
+
+function loadCityWithFallback(index = 0) {
+  const cityNames = [
+    "city.glb",
+    "no_roof.glb",
+    "among_us.glb",
+    "old_city.glb",
+    "city4.glb",
+  ];
+
+  if (index >= cityNames.length) {
+    console.error("❌ All city models failed to load.");
+    return;
+  }
+
+  const path = `/models/${cityNames[index]}`;
+
+  new GLTFLoader().load(
+    path,
+    (gltf) => {
+      console.log(`✅ Loaded: ${path}`);
+      scene.add(gltf.scene);
+    },
+    undefined,
+    () => {
+      console.warn(`⚠️ Failed: ${path}`);
+      loadCityWithFallback(index + 1);
+    }
+  );
+}
+
+/* =====================================================
    STATE
 ===================================================== */
 
@@ -69,6 +105,8 @@ let targetHeight = CONFIG.HEIGHT.MIN;
 let targetFov = CONFIG.FOV.MIN;
 
 let debugGyroAlpha: number | null = null;
+
+let cameraMode: CameraMode = "GYRO";
 
 /* =====================================================
    UTILS
@@ -98,13 +136,8 @@ function dampAngle(current: number, target: number, lambda: number, dt: number) 
 }
 
 /* =====================================================
-   CAMERA MODE
+   CONTROLS
 ===================================================== */
-
-type CameraMode = "GYRO" | "GESTURE";
-let cameraMode: CameraMode = "GYRO";
-
-/* ---------------- GYRO ---------------- */
 
 function updateGyroYaw(alphaDeg: number) {
   const alpha = THREE.MathUtils.degToRad(alphaDeg);
@@ -113,16 +146,12 @@ function updateGyroYaw(alphaDeg: number) {
 }
 
 function bindGyro() {
-  function onDeviceOrientation(e: DeviceOrientationEvent) {
+  window.addEventListener("deviceorientation", (e) => {
     if (cameraMode !== "GYRO") return;
     if (e.alpha == null) return;
     updateGyroYaw(e.alpha);
-  }
-
-  window.addEventListener("deviceorientation", onDeviceOrientation);
+  });
 }
-
-/* ---------------- GESTURE ---------------- */
 
 let isTouchPanning = false;
 let lastPanX = 0;
@@ -140,7 +169,6 @@ function bindGesture() {
       isTouchPanning = true;
       lastPanX = e.touches[0].clientX;
     }
-
     if (e.touches.length === 2) {
       isTouchPanning = false;
       lastPinchDist = pinchDistance(e.touches);
@@ -182,71 +210,37 @@ function bindGesture() {
     isTouchPanning = false;
     lastPinchDist = null;
   });
-
-  window.addEventListener(
-    "wheel",
-    (e) => {
-      e.preventDefault();
-      targetZoom += e.deltaY < 0 ? CONFIG.ZOOM.STEP : -CONFIG.ZOOM.STEP;
-      targetZoom = THREE.MathUtils.clamp(
-        targetZoom,
-        CONFIG.ZOOM.MIN,
-        CONFIG.ZOOM.MAX
-      );
-    },
-    { passive: false }
-  );
 }
 
 /* =====================================================
-   DEBUG UI
+   UI INIT
 ===================================================== */
 
-const overlay = document.createElement("div");
+const ui = initUI({
+  getMode: () => cameraMode,
+  toggleMode: () => {
+    cameraMode = cameraMode === "GYRO" ? "GESTURE" : "GYRO";
+  },
+  getDebugInfo: () => {
+    const yawDeg = wrapDeg360(
+      THREE.MathUtils.radToDeg(currentYaw)
+    );
 
-Object.assign(overlay.style, {
-  position: "fixed",
-  top: "12px",
-  left: "12px",
-  background: "rgba(0,0,0,0.6)",
-  color: "#fff",
-  padding: "8px 10px",
-  borderRadius: "6px",
-  fontFamily: "monospace",
-  fontSize: "12px",
-  pointerEvents: "none",
-  zIndex: "9999",
+    return (
+      `MODE: ${cameraMode}\n` +
+      `ZOOM: ${camera.zoom.toFixed(2)}\n` +
+      `HEIGHT: ${camera.position.y.toFixed(1)}\n` +
+      `YAW: ${yawDeg.toFixed(1)}°\n` +
+      `GYRO α: ${
+        debugGyroAlpha == null
+          ? "N/A"
+          : wrapDeg360(
+              THREE.MathUtils.radToDeg(debugGyroAlpha)
+            ).toFixed(1) + "°"
+      }`
+    );
+  },
 });
-
-document.body.appendChild(overlay);
-
-/* =====================================================
-   MODE BUTTON
-===================================================== */
-
-const modeBtn = document.createElement("button");
-modeBtn.innerText = "MODE: GYRO";
-
-Object.assign(modeBtn.style, {
-  position: "fixed",
-  bottom: "16px",
-  left: "50%",
-  transform: "translateX(-50%)",
-  padding: "10px 16px",
-  borderRadius: "8px",
-  border: "none",
-  background: "#222",
-  color: "#fff",
-  fontSize: "14px",
-  zIndex: "9999",
-});
-
-document.body.appendChild(modeBtn);
-
-modeBtn.onclick = () => {
-  cameraMode = cameraMode === "GYRO" ? "GESTURE" : "GYRO";
-  modeBtn.innerText = `MODE: ${cameraMode}`;
-};
 
 /* =====================================================
    MAIN LOOP
@@ -258,13 +252,7 @@ function animate() {
   requestAnimationFrame(animate);
   const dt = clock.getDelta();
 
-  currentYaw = dampAngle(
-    currentYaw,
-    targetYaw,
-    CONFIG.YAW.DAMP,
-    dt
-  );
-
+  currentYaw = dampAngle(currentYaw, targetYaw, CONFIG.YAW.DAMP, dt);
   camera.zoom = damp(camera.zoom, targetZoom, CONFIG.ZOOM.DAMP, dt);
 
   const t =
@@ -314,22 +302,7 @@ function animate() {
 
   camera.updateProjectionMatrix();
 
-  const yawDeg = wrapDeg360(
-    THREE.MathUtils.radToDeg(currentYaw)
-  );
-
-  overlay.innerText =
-    `MODE: ${cameraMode}\n` +
-    `ZOOM: ${camera.zoom.toFixed(2)}\n` +
-    `HEIGHT: ${camera.position.y.toFixed(1)}\n` +
-    `YAW: ${yawDeg.toFixed(1)}°\n` +
-    `GYRO α: ${
-      debugGyroAlpha == null
-        ? "N/A"
-        : wrapDeg360(
-            THREE.MathUtils.radToDeg(debugGyroAlpha)
-          ).toFixed(1) + "°"
-    }`;
+  ui.update();
 
   renderer.render(scene, camera);
 }
@@ -341,7 +314,4 @@ function animate() {
 bindGyro();
 bindGesture();
 animate();
-
-new GLTFLoader().load("/models/city.glb", (gltf) => {
-  scene.add(gltf.scene);
-});
+loadCityWithFallback();
