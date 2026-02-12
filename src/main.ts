@@ -34,8 +34,8 @@ const CONFIG = {
 const MAP_WIDTH = 50;
 const MAP_HEIGHT = 50;
 
-const WORLD_WIDTH = 20;
-const WORLD_DEPTH = 20;
+const WORLD_WIDTH = 10;
+const WORLD_DEPTH = 10;
 
 const FLOOR_HEIGHT = 0;
 
@@ -137,7 +137,7 @@ function loadFloorModel(floor: number) {
         if (obj.geometry) obj.geometry.dispose();
         if (obj.material) {
           if (Array.isArray(obj.material)) {
-            obj.material.forEach((m) => m.dispose());
+            obj.material.forEach((m: THREE.Material) => m.dispose());
           } else {
             obj.material.dispose();
           }

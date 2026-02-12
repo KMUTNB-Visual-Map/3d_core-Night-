@@ -27,7 +27,7 @@ def save_data():
             "floor": int(entry_floor.get())
         }
         save_json(data)
-        messagebox.showinfo("Success", "Saved successfully!")
+        #messagebox.showinfo("Success", "Saved successfully!")
     except ValueError:
         messagebox.showerror("Error", "Please enter valid integers.")
 
