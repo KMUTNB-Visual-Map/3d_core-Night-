@@ -12,8 +12,8 @@ const CONFIG = {
     DAMP: 10,
   },
   HEIGHT: {
-    MIN: 10,
-    MAX: 150,
+    MIN: 2,
+    MAX: 10,
     DAMP: 8,
   },
   PITCH: {
@@ -23,7 +23,7 @@ const CONFIG = {
   },
   FOV: {
     MIN: 60,
-    MAX: 100,
+    MAX: 150,
     DAMP: 10,
   },
   YAW: {
@@ -59,6 +59,12 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 document.body.appendChild(renderer.domElement);
+
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+dirLight.position.set(50, 100, 50);
+scene.add(dirLight);
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 0.6));
 
 /* =====================================================
    3. STATE
