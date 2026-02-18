@@ -6,7 +6,7 @@
     "DAMP": 10
   },
   "HEIGHT": {
-    "MIN": 2,
+    "MIN": 7,
     "MAX": 100,
     "DAMP": 8
   },

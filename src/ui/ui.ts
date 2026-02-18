@@ -4,9 +4,13 @@ type UIOptions = {
   getMode: () => CameraMode;
   toggleMode: () => void;
   getDebugInfo: () => string;
+  getPosition: () => { x: number; y: number; z: number };
+  onRequestGPS: () => void;
+  getGPSInfo: () => string;
 };
 
 export function initUI(options: UIOptions) {
+
   /* =====================================================
      DEBUG OVERLAY
   ===================================================== */
@@ -19,12 +23,13 @@ export function initUI(options: UIOptions) {
     left: "12px",
     background: "rgba(0,0,0,0.6)",
     color: "#fff",
-    padding: "8px 10px",
-    borderRadius: "6px",
+    padding: "10px 12px",
+    borderRadius: "8px",
     fontFamily: "monospace",
     fontSize: "12px",
     pointerEvents: "none",
     zIndex: "9999",
+    whiteSpace: "pre-line"
   });
 
   document.body.appendChild(overlay);
@@ -37,27 +42,67 @@ export function initUI(options: UIOptions) {
 
   Object.assign(modeBtn.style, {
     position: "fixed",
-    bottom: "16px",
+    bottom: "20px",
     left: "50%",
     transform: "translateX(-50%)",
     padding: "10px 16px",
     borderRadius: "8px",
     border: "none",
-    background: "#222",
+    background: "#3fb44f",
     color: "#fff",
     fontSize: "14px",
     zIndex: "9999",
+    boxShadow: "0 4px 12px rgb(51, 214, 119)",
   });
 
   document.body.appendChild(modeBtn);
 
   /* =====================================================
-     UPDATE FUNCTION
+     GPS BUTTON
+  ===================================================== */
+
+  const gpsBtn = document.createElement("button");
+
+  Object.assign(gpsBtn.style, {
+    position: "fixed",
+    bottom: "20px",
+    right: "20px",
+    padding: "10px 14px",
+    borderRadius: "8px",
+    border: "none",
+    background: "#0055ff",
+    color: "#fff",
+    fontSize: "14px",
+    zIndex: "9999",
+  });
+
+  gpsBtn.innerText = "📍 GPS";
+  document.body.appendChild(gpsBtn);
+
+  gpsBtn.onclick = () => {
+    options.onRequestGPS();
+  };
+
+  /* =====================================================
+     UPDATE
   ===================================================== */
 
   function update() {
+    const pos = options.getPosition();
+
     modeBtn.innerText = `MODE: ${options.getMode()}`;
-    overlay.innerText = options.getDebugInfo();
+
+    overlay.innerText = `
+${options.getDebugInfo()}
+
+POSITION
+X: ${pos.x.toFixed(2)}
+Y: ${pos.y.toFixed(2)}
+Z: ${pos.z.toFixed(2)}
+
+GPS
+${options.getGPSInfo()}
+`.trim();
   }
 
   modeBtn.onclick = () => {
@@ -65,10 +110,7 @@ export function initUI(options: UIOptions) {
     update();
   };
 
-  // initialize UI once
   update();
 
-  return {
-    update,
-  };
+  return { update };
 }
