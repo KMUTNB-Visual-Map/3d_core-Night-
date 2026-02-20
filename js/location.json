@@ -1,0 +1,202 @@
+[
+  {
+    "location_id": 1,
+    "node_id": 100,
+    "name_th": "ประตูทางเข้าหลัก (ฝั่งถ.พิบูลสงคราม)",
+    "name_en": "Main Entrance (Pibulsongkram Rd.)",
+    "category": "public",
+    "floor": 1
+  },
+  {
+    "location_id": 2,
+    "node_id": 101,
+    "name_th": "อาคาร 81 (อาคารอเนกประสงค์)",
+    "name_en": "Building 81 (Anek Prasong)",
+    "category": "academic",
+    "floor": 1
+  },
+  {
+    "location_id": 3,
+    "node_id": 102,
+    "name_th": "ลานอเนกประสงค์ ชั้น 1 (ตึก 81)",
+    "name_en": "Multipurpose Hall (Bldg 81, 1st Fl.)",
+    "category": "public",
+    "floor": 1
+  },
+  {
+    "location_id": 4,
+    "node_id": 103,
+    "name_th": "ร้าน 7-Eleven ",
+    "name_en": "7-Eleven ",
+    "category": "shop",
+    "floor": 1
+  },
+  {
+    "location_id": 5,
+    "node_id": 104,
+    "name_th": "สำนักงานคณบดีคณะวิศวกรรมศาสตร์ (ชั้น 3 ตึก 81)",
+    "name_en": "Dean's Office, Faculty of Engineering (Fl.3 Bldg 81)",
+    "category": "office",
+    "floor": 3
+  },
+  {
+    "location_id": 6,
+    "node_id": 105,
+    "name_th": "ห้องเรียน 81-315",
+    "name_en": "Room 81-315",
+    "category": "academic",
+    "floor": 3
+  },
+  {
+    "location_id": 7,
+    "node_id": 106,
+    "name_th": "ห้องเรียน 81-513",
+    "name_en": "Room 81-513",
+    "category": "academic",
+    "floor": 5
+  },
+  {
+    "location_id": 8,
+    "node_id": 107,
+    "name_th": "ห้องเรียน 81-601",
+    "name_en": "Room 81-601",
+    "category": "academic",
+    "floor": 6
+  },
+  {
+    "location_id": 9,
+    "node_id": 200,
+    "name_th": "อาคาร 89 (อาคารนวมินทรราชินี)",
+    "name_en": "Building 89 (Navamindra Rajini)",
+    "category": "academic",
+    "floor": 1
+  },
+  {
+    "location_id": 10,
+    "node_id": 201,
+    "name_th": "ห้องบรรยาย 89-401",
+    "name_en": "Lecture Room 89-401",
+    "category": "academic",
+    "floor": 4
+  },
+  {
+    "location_id": 11,
+    "node_id": 300,
+    "name_th": "อาคาร 11 (ตึกแดง)",
+    "name_en": "Building 11 (Red Building)",
+    "category": "academic",
+    "floor": 1
+  },
+  {
+    "location_id": 12,
+    "node_id": 400,
+    "name_th": "โรงอาหารสวนปาล์ม",
+    "name_en": "Suan Palm Canteen",
+    "category": "food",
+    "floor": 1
+  },
+  {
+    "location_id": 13,
+    "node_id": 401,
+    "name_th": "โรงอาหารตึก 40 (Food Center)",
+    "name_en": "Building 40 Canteen",
+    "category": "food",
+    "floor": 1
+  },
+  {
+    "location_id": 14,
+    "node_id": 500,
+    "name_th": "ภาควิชาวิศวกรรมไฟฟ้า (EE)",
+    "name_en": "Department of Electrical Engineering (EE)",
+    "category": "department",
+    "floor": 1
+  },
+  {
+    "location_id": 15,
+    "node_id": 501,
+    "name_th": "ภาควิชาวิศวกรรมเครื่องกล (ME)",
+    "name_en": "Department of Mechanical Engineering (ME)",
+    "category": "department",
+    "floor": 1
+  },
+  {
+    "location_id": 16,
+    "node_id": 502,
+    "name_th": "ภาควิชาวิศวกรรมคอมพิวเตอร์ (CpE)",
+    "name_en": "Department of Computer Engineering (CpE)",
+    "category": "department",
+    "floor": 4
+  },
+  {
+    "location_id": 17,
+    "node_id": 503,
+    "name_th": "ภาควิชาวิศวกรรมเคมี (ChE)",
+    "name_en": "Department of Chemical Engineering (ChE)",
+    "category": "department",
+    "floor": 1
+  },
+  {
+    "location_id": 18,
+    "node_id": 504,
+    "name_th": "ภาควิชาวิศวกรรมโยธา (CE) ตึก 44",
+    "name_en": "Department of Civil Engineering (CE) Bldg 44",
+    "category": "department",
+    "floor": 1
+  },
+  {
+    "location_id": 19,
+    "node_id": 600,
+    "name_th": "หอสมุดกลาง (Central Library)",
+    "name_en": "Central Library",
+    "category": "facility",
+    "floor": 2
+  },
+  {
+    "location_id": 20,
+    "node_id": 601,
+    "name_th": "กองบริการการศึกษา (ทะเบียน)",
+    "name_en": "Registrar's Office",
+    "category": "office",
+    "floor": 2
+  },
+  {
+    "location_id": 21,
+    "node_id": 700,
+    "name_th": "ลานพระจอมเกล้า (ลานแดง)",
+    "name_en": "King Mongkut Monument (Lan Daeng)",
+    "category": "landmark",
+    "floor": 1
+  },
+  {
+    "location_id": 22,
+    "node_id": 801,
+    "name_th": "ห้องน้ำชาย (ตึก 81 ชั้น 1)",
+    "name_en": "Male Restroom (Bldg 81, Fl.1)",
+    "category": "facility",
+    "floor": 1
+  },
+  {
+    "location_id": 23,
+    "node_id": 802,
+    "name_th": "ห้องน้ำหญิง (ตึก 81 ชั้น 1)",
+    "name_en": "Female Restroom (Bldg 81, Fl.1)",
+    "category": "facility",
+    "floor": 1
+  },
+  {
+    "location_id": 24,
+    "node_id": 901,
+    "name_th": "ลิฟต์โดยสาร โซน A (ตึก 81)",
+    "name_en": "Elevator Zone A (Bldg 81)",
+    "category": "transport",
+    "floor": 1
+  },
+  {
+    "location_id": 25,
+    "node_id": 902,
+    "name_th": "ลิฟต์โดยสาร ตึก 89",
+    "name_en": "Elevator (Bldg 89)",
+    "category": "transport",
+    "floor": 1
+  }
+]

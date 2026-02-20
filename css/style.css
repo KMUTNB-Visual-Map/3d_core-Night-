@@ -1,0 +1,174 @@
+@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600&display=swap');
+
+:root {
+    --search-bg: #fdfdfd;
+    --text-main: #333d52;
+    --text-placeholder: #7c89a7;
+    --text-sub: #9aa8c0;
+    --border-color: #e0e5ed;
+    --highlight-color: #e7f3ff;
+    --accent-color: #347efb;
+    --shadow-color: rgba(0, 0, 0, 0.15);
+}
+
+* {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden; /* กัน scroll */
+    font-family: 'Sarabun', sans-serif;
+}
+
+/* =========================
+   3D MAP BASE LAYER
+========================= */
+
+#map {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 0;
+    background-color: #21293e; /* fallback */
+}
+
+/* =========================
+   UI OVERLAY LAYER
+========================= */
+
+.ui-layer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    pointer-events: none; /* ให้ drag map ได้ */
+    z-index: 10;
+}
+
+/* เปิด pointer ให้ element ที่ต้องคลิก */
+.header-controls,
+.search-wrapper,
+.filter-button,
+#results-list,
+input {
+    pointer-events: auto;
+}
+
+/* =========================
+   HEADER CONTROLS
+========================= */
+
+.header-controls {
+    position: absolute;
+    top: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90%;
+    max-width: 600px;
+    display: flex;
+    align-items: center;
+}
+
+/* =========================
+   SEARCH
+========================= */
+
+.search-wrapper {
+    position: relative;
+    flex-grow: 1;
+    box-shadow: 0 5px 15px var(--shadow-color);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+}
+
+.search-wrapper i {
+    position: absolute;
+    left: 15px;
+    color: var(--text-placeholder);
+    font-size: 1.1rem;
+}
+
+input[type="text"] {
+    width: 100%;
+    padding: 16px 16px 16px 45px;
+    font-size: 16px;
+    border: 1px solid transparent;
+    border-radius: 12px;
+    outline: none;
+    background-color: transparent;
+    color: var(--text-main);
+    transition: all 0.2s;
+}
+
+input[type="text"]:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(52, 126, 251, 0.2);
+}
+
+/* =========================
+   FILTER BUTTON
+========================= */
+
+.filter-button {
+    margin-left: 15px;
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+    background-color: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 5px 15px var(--shadow-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.filter-button i {
+    color: var(--accent-color);
+    font-size: 1.2rem;
+}
+
+/* =========================
+   SEARCH RESULTS
+========================= */
+
+#results-list {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    margin-top: 8px;
+    background: var(--search-bg);
+    border-radius: 12px;
+    box-shadow: 0 8px 24px var(--shadow-color);
+    max-height: 50vh;
+    overflow-y: auto;
+    z-index: 100;
+    display: none;
+    border: 1px solid var(--border-color);
+}
+
+.result-item {
+    padding: 16px 20px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+}
+
+.result-item:last-child {
+    border-bottom: none;
+}
+
+.result-item:active {
+    background-color: var(--highlight-color);
+}

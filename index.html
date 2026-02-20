@@ -1,13 +1,51 @@
 <!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>three_vite</title>
-  </head>
-  <body>
-    <div id="app"></div>
-    <script type="module" src="/src/main.ts"></script>
-  </body>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+
+  <title>KMUTNB Engineering Navigation</title>
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+
+<body>
+
+  <!-- 3D MAP BASE LAYER -->
+  <div id="map"></div>
+
+  <!-- UI OVERLAY LAYER -->
+  <div class="ui-layer">
+
+    <div class="header-controls">
+
+      <div class="search-wrapper">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input
+          type="text"
+          id="search-input"
+          placeholder="ค้นหาตึก 81, ห้องเรียน..."
+          autocomplete="off"
+        />
+        <div id="results-list"></div>
+      </div>
+
+      <div class="filter-button">
+        <i class="fa-solid fa-layer-group"></i>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Vite entry -->
+  <script type="module" src="/src/main.ts"></script>
+</body>
 </html>
