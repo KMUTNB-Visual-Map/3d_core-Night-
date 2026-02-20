@@ -35,7 +35,7 @@ html, body {
     width: 100vw;
     height: 100vh;
     z-index: 0;
-    background-color: #21293e; /* fallback */
+    background-color: #ffffff; /* fallback */
 }
 
 /* =========================
@@ -179,7 +179,7 @@ input[type="text"]:focus {
 .floor-selector {
     position: fixed;   /* เปลี่ยนจาก absolute */
     right: 0%;
-    top: 370px;
+    top: 300px;
 
     display: flex;
     flex-direction: column;
@@ -212,5 +212,5 @@ input[type="text"]:focus {
 .floor-btn.active {
     background: var(--accent-color);
     color: white;
-    box-shadow: 0 0 20px rgba(52, 126, 251, 0.6);
+    box-shadow: 0 0 20px rgb(38, 78, 255);
 }

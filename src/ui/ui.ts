@@ -1,4 +1,4 @@
-export type CameraMode = "GYRO" | "GESTURE";
+export type CameraMode = "GESTURE" | "GYRO" | "FREE";
 
 type UIOptions = {
   getMode: () => CameraMode;
@@ -7,6 +7,7 @@ type UIOptions = {
   getPosition: () => { x: number; y: number; z: number };
   onRequestGPS: () => void;
   getGPSInfo: () => string;
+  isFollowing: () => boolean;
 };
 
 export function initUI(options: UIOptions) {
@@ -91,18 +92,20 @@ export function initUI(options: UIOptions) {
     const pos = options.getPosition();
 
     modeBtn.innerText = `MODE: ${options.getMode()}`;
-
+    if (options.isFollowing()) {
+  gpsBtn.style.background = "#0055ff";
+} else {
+  gpsBtn.style.background = "#ff4d4f";
+}
     overlay.innerText = `
-${options.getDebugInfo()}
-
-POSITION
-X: ${pos.x.toFixed(2)}
-Y: ${pos.y.toFixed(2)}
-Z: ${pos.z.toFixed(2)}
-
-GPS
-${options.getGPSInfo()}
-`.trim();
+    ${options.getDebugInfo()}
+    POSITION
+    X: ${pos.x.toFixed(2)}
+    Y: ${pos.y.toFixed(2)}
+    Z: ${pos.z.toFixed(2)}
+    GPS
+    ${options.getGPSInfo()}
+    `.trim();
   }
 
   modeBtn.onclick = () => {

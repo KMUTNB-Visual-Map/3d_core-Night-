@@ -13,6 +13,14 @@ import { bindGyro } from "./controls/gyroController";
 import { bindGesture } from "./controls/gestureController";
 import { initUI, type CameraMode } from "./ui/ui";
 import { setFloor} from "./ui/floormanage";
+import {
+  enableFollow,
+  disableFollow,
+  isFollowing,
+} from "./core/followmanage";
+import { bindFreeController } from "./controls/freeController";
+
+
 /* =============================
    MODE
 ============================= */
@@ -27,7 +35,7 @@ floorButtons.forEach((btn) => {
 
     const changed = setFloor(floor);
     if (!changed) return;
-
+    disableFollow(); // กดเลือกชั้นเอง ถือว่าไม่อยากให้ตามตำแหน่งแล้ว
     // เปลี่ยน UI state
     floorButtons.forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
@@ -66,14 +74,16 @@ let currentFloor: number | null = null;
 function handleLocation(location: any) {
   const { x, y, floor } = location;
 
-  if (floor !== currentFloor) {
+  if (isFollowing() && floor !== currentFloor) {
     loadFloor(scene, floor);
     currentFloor = floor;
   }
 
   const pos = mapToWorld(x, y, floor);
-  state.targetX = pos.x;
-  state.targetZ = pos.z;
+  if (isFollowing()) {
+    state.targetX = pos.x;
+    state.targetZ = pos.z;
+  }
 }
 
 /* =============================
@@ -111,6 +121,32 @@ bindGesture({
   deadzone: CONFIG.PAN.DEADZONE,
 });
 
+bindFreeController({
+  isActive: () => cameraMode === "FREE",
+
+  getPosition: () => ({
+    x: state.targetX,
+    z: state.targetZ,
+  }),
+
+  setPosition: (x, z) => {
+    state.targetX = x;
+    state.targetZ = z;
+  },
+
+  addYaw: (d) => {
+    state.targetYaw += d;
+  },
+
+  getZoom: () => state.targetZoom,
+  setZoom: (z) => (state.targetZoom = z),
+
+  zoomMin: CONFIG.ZOOM.MIN,
+  zoomMax: CONFIG.ZOOM.MAX,
+
+  panSpeed: 0.02,
+  rotateSens: 0.005,
+});
 /* =============================
    UI
 ============================= */
@@ -119,10 +155,26 @@ const ui = initUI({
   getMode: () => cameraMode,
 
   toggleMode: () => {
-    cameraMode = cameraMode === "GYRO" ? "GESTURE" : "GYRO";
+    switch (cameraMode) {
+      case "GESTURE":
+        cameraMode = "FREE";
+        break;
+
+      case "FREE":
+        cameraMode = "GYRO";
+        break;
+
+      case "GYRO":
+        cameraMode = "GESTURE";
+        break;
+    }
+
+    if (cameraMode === "FREE") {
+      disableFollow();
+    }
 
     if (cameraMode === "GYRO") {
-      gyro.enable(); // ขอ permission ตอน user กด
+      gyro.enable();
       setBrowserZoomLock(true);
     } else {
       setBrowserZoomLock(false);
@@ -140,9 +192,25 @@ YAW: ${THREE.MathUtils.radToDeg(state.currentYaw).toFixed(1)}°`,
     z: camera.position.z,
   }),
 
-  onRequestGPS: gps.request,
+  onRequestGPS: async () => {
+  await gps.request();
+
+  const following = isFollowing();
+
+  if (following) {
+    disableFollow();
+    return;
+  }
+
+  enableFollow();
+
+  const location = await fetchLocation();
+  handleLocation(location);
+},
 
   getGPSInfo: gps.getInfo,
+
+  isFollowing: () => isFollowing(), // 👈 ส่งเข้า UI
 });
 
 /* =============================
