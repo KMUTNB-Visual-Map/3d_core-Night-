@@ -12,13 +12,30 @@ import { createGPSService } from "./core/gpsservice";
 import { bindGyro } from "./controls/gyroController";
 import { bindGesture } from "./controls/gestureController";
 import { initUI, type CameraMode } from "./ui/ui";
-
+import { setFloor} from "./ui/floormanage";
 /* =============================
    MODE
 ============================= */
 
 let cameraMode: CameraMode = "GESTURE";
 
+const floorButtons = document.querySelectorAll<HTMLButtonElement>(".floor-btn");
+
+floorButtons.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const floor = Number(btn.textContent);
+
+    const changed = setFloor(floor);
+    if (!changed) return;
+
+    // เปลี่ยน UI state
+    floorButtons.forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+
+    // โหลด floor จริง
+    loadFloor(scene, floor);
+  });
+});
 /* =============================
    CONFIG
 ============================= */

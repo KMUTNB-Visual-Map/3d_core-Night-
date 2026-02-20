@@ -172,3 +172,45 @@ input[type="text"]:focus {
 .result-item:active {
     background-color: var(--highlight-color);
 }
+/* =========================
+   FLOATING CIRCULAR FLOOR BUTTONS
+========================= */
+
+.floor-selector {
+    position: fixed;   /* เปลี่ยนจาก absolute */
+    right: 0%;
+    top: 370px;
+
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    pointer-events: auto;
+    z-index: 50;  /* กันโดน element อื่นทับ */
+}
+
+.floor-btn {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    border: none;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(8px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+
+    transition: all 0.2s ease;
+}
+
+.floor-btn:hover {
+    transform: scale(1.08);
+}
+
+.floor-btn.active {
+    background: var(--accent-color);
+    color: white;
+    box-shadow: 0 0 20px rgba(52, 126, 251, 0.6);
+}
