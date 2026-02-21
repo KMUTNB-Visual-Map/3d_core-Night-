@@ -7,92 +7,148 @@ type FreeOptions = {
 
   // Rotation
   addYaw: (delta: number) => void;
+  addPitch: (delta: number) => void;
 
-  // Zoom
-  getZoom: () => number;
-  setZoom: (z: number) => void;
-  zoomMin: number;
-  zoomMax: number;
-  zoomSpeed?: number;
-
-  panSpeed: number;
+  moveSpeed: number;
   rotateSens: number;
-  deadzone?: number;
 };
 
 export function bindFreeController(options: FreeOptions) {
-  const zoomSpeed = options.zoomSpeed ?? 0.001;
-  const deadzone = options.deadzone ?? 0;
+  const keys: Record<string, boolean> = {};
+
+  /* =========================
+     KEYBOARD (WASD)
+  ========================= */
+
+  window.addEventListener("keydown", (e) => {
+    if (!options.isActive()) return;
+    keys[e.key.toLowerCase()] = true;
+  });
+
+  window.addEventListener("keyup", (e) => {
+    keys[e.key.toLowerCase()] = false;
+  });
+
+  /* =========================
+     ROTATE (mouse left-right)
+  ========================= */
 
   let isMouseDown = false;
   let lastX = 0;
-  let lastY = 0;
-
-  /* =========================
-     DESKTOP
-  ========================= */
 
   window.addEventListener("mousedown", (e) => {
     if (!options.isActive()) return;
-
     isMouseDown = true;
     lastX = e.clientX;
-    lastY = e.clientY;
   });
 
   window.addEventListener("mousemove", (e) => {
     if (!options.isActive() || !isMouseDown) return;
 
     const dx = e.clientX - lastX;
-    const dy = e.clientY - lastY;
-
     lastX = e.clientX;
-    lastY = e.clientY;
 
-    if (Math.abs(dx) < deadzone && Math.abs(dy) < deadzone) return;
-
-    // Left-right drag = rotate
     options.addYaw(-dx * options.rotateSens);
-
-    // Up-down drag = pan forward/back
-    const pos = options.getPosition();
-    const newX = pos.x - dy * options.panSpeed;
-    const newZ = pos.z - dx * options.panSpeed;
-
-    options.setPosition(newX, newZ);
   });
 
   window.addEventListener("mouseup", () => {
     isMouseDown = false;
   });
 
-  window.addEventListener("mouseleave", () => {
-    isMouseDown = false;
+  /* =========================
+     TOUCH (1 finger pan / 2 finger rotate)
+  ========================= */
+
+  let lastTouches: { x: number; y: number }[] = [];
+
+  window.addEventListener("touchstart", (e) => {
+    if (!options.isActive()) return;
+
+    lastTouches = [];
+
+    for (let i = 0; i < e.touches.length; i++) {
+      lastTouches.push({
+        x: e.touches[i].clientX,
+        y: e.touches[i].clientY,
+      });
+    }
+  });
+
+  window.addEventListener("touchmove", (e) => {
+    if (!options.isActive()) return;
+
+    // 1 finger = pan
+    if (e.touches.length === 1 && lastTouches.length === 1) {
+      const touch = e.touches[0];
+
+      const dx = touch.clientX - lastTouches[0].x;
+      const dy = touch.clientY - lastTouches[0].y;
+
+      const pos = options.getPosition();
+
+      const newX = pos.x - dx * options.moveSpeed;
+      const newZ = pos.z - dy * options.moveSpeed;
+
+      options.setPosition(newX, newZ);
+
+      lastTouches[0] = {
+        x: touch.clientX,
+        y: touch.clientY,
+      };
+    }
+
+  // 2 fingers gesture
+  if (e.touches.length === 2 && lastTouches.length === 2) {
+    const t1 = e.touches[0];
+    const t2 = e.touches[1];
+
+    const dy1 = t1.clientY - lastTouches[0].y;
+    const dy2 = t2.clientY - lastTouches[1].y;
+
+    // 👇 กรณีสวนทาง = rotate yaw
+    if (dy1 * dy2 < 0) {
+      const rotationAmount = (dy1 - dy2) * options.rotateSens;
+      options.addYaw(rotationAmount);
+    }
+
+    // 👇 กรณีไปทิศเดียวกัน = pitch
+    else if (dy1 * dy2 > 0) {
+      const avgDy = (dy1 + dy2) / 2;
+      options.addPitch(-avgDy * options.rotateSens);
+    }
+
+    lastTouches = [
+      { x: t1.clientX, y: t1.clientY },
+      { x: t2.clientX, y: t2.clientY },
+    ];
+  }
+  });
+
+  window.addEventListener("touchend", () => {
+    lastTouches = [];
   });
 
   /* =========================
-     ZOOM
+     UPDATE LOOP
   ========================= */
 
-  window.addEventListener(
-    "wheel",
-    (e) => {
-      if (!options.isActive()) return;
+  function update() {
+    if (!options.isActive()) return;
 
-      const delta = -e.deltaY * zoomSpeed;
-      let newZoom = options.getZoom() + delta;
+    const pos = options.getPosition();
+    let newX = pos.x;
+    let newZ = pos.z;
 
-      newZoom = Math.max(options.zoomMin, newZoom);
-      newZoom = Math.min(options.zoomMax, newZoom);
+    if (keys["w"]) newZ -= options.moveSpeed;
+    if (keys["s"]) newZ += options.moveSpeed;
+    if (keys["a"]) newX -= options.moveSpeed;
+    if (keys["d"]) newX += options.moveSpeed;
 
-      options.setZoom(newZoom);
-    },
-    { passive: true }
-  );
+    options.setPosition(newX, newZ);
+  }
 
   return {
-    dispose() {
-      // optional future cleanup
-    },
+    update,
+    dispose() {},
   };
 }

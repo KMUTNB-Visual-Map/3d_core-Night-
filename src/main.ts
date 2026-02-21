@@ -102,7 +102,7 @@ const gyro = bindGyro({
 });
 
 bindGesture({
-  isActive: () => true, // zoom ใช้ได้ทุก mode
+  isActive: () => cameraMode === "GESTURE", // zoom ใช้ได้ทุก mode
 
   getZoom: () => state.targetZoom,
   setZoom: (z) => (state.targetZoom = z),
@@ -121,7 +121,7 @@ bindGesture({
   deadzone: CONFIG.PAN.DEADZONE,
 });
 
-bindFreeController({
+const free = bindFreeController({
   isActive: () => cameraMode === "FREE",
 
   getPosition: () => ({
@@ -138,13 +138,11 @@ bindFreeController({
     state.targetYaw += d;
   },
 
-  getZoom: () => state.targetZoom,
-  setZoom: (z) => (state.targetZoom = z),
+  addPitch: (d) => {
+    state.targetPitch += d;  // 👈 ต้องมี targetPitch ใน camera state
+  },
 
-  zoomMin: CONFIG.ZOOM.MIN,
-  zoomMax: CONFIG.ZOOM.MAX,
-
-  panSpeed: 0.02,
+  moveSpeed: 0.1,
   rotateSens: 0.005,
 });
 /* =============================
@@ -222,6 +220,7 @@ const clock = new THREE.Clock();
 function animate() {
   requestAnimationFrame(animate);
   const dt = clock.getDelta();
+  free.update();
 
   updateCamera(camera, state, CONFIG, dt);
 

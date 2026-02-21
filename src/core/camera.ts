@@ -6,6 +6,7 @@ export type CameraState = {
   currentYaw: number;
   targetX: number;
   targetZ: number;
+  targetPitch: number;   // ✔ มีอยู่แล้ว
 };
 
 export function createCamera(config: any) {
@@ -24,6 +25,7 @@ export function createCamera(config: any) {
     currentYaw: 0,
     targetX: 0,
     targetZ: 0,
+    targetPitch: config.PITCH.MIN, // 🔥 ใส่ค่าเริ่มต้น
   };
 
   return { camera, state };
@@ -37,12 +39,24 @@ export function updateCamera(
 ) {
   const damp = THREE.MathUtils.damp;
 
+  // ================= YAW =================
+
   state.currentYaw +=
     Math.atan2(
       Math.sin(state.targetYaw - state.currentYaw),
       Math.cos(state.targetYaw - state.currentYaw)
     ) *
     (1 - Math.exp(-config.YAW.DAMP * dt));
+
+  // ================= PITCH (clamp) =================
+
+  state.targetPitch = THREE.MathUtils.clamp(
+    state.targetPitch,
+    config.PITCH.MIN,
+    config.PITCH.MAX
+  );
+
+  // ================= ZOOM =================
 
   camera.zoom = damp(camera.zoom, state.targetZoom, config.ZOOM.DAMP, dt);
 
@@ -56,17 +70,13 @@ export function updateCamera(
     t
   );
 
-  const targetPitch = THREE.MathUtils.lerp(
-    config.PITCH.MIN,
-    config.PITCH.MAX,
-    t
-  );
-
   const targetFov = THREE.MathUtils.lerp(
     config.FOV.MIN,
     config.FOV.MAX,
     t
   );
+
+  // ================= POSITION =================
 
   camera.position.y = damp(
     camera.position.y,
@@ -91,7 +101,14 @@ export function updateCamera(
 
   camera.fov = damp(camera.fov, targetFov, config.FOV.DAMP, dt);
 
-  camera.rotation.set(targetPitch, state.currentYaw, 0, "YXZ");
+  // ================= FINAL ROTATION =================
+
+  camera.rotation.set(
+    state.targetPitch,   // 🔥 ใช้ค่าจาก gesture จริง
+    state.currentYaw,
+    0,
+    "YXZ"
+  );
 
   camera.updateProjectionMatrix();
 }
