@@ -6,7 +6,9 @@ export type CameraState = {
   currentYaw: number;
   targetX: number;
   targetZ: number;
-  targetPitch: number;   // ✔ มีอยู่แล้ว
+
+  targetPitch: number;
+  currentPitch: number;   // ✔ มีจริง ใช้งานจริง
 };
 
 export function createCamera(config: any) {
@@ -19,18 +21,21 @@ export function createCamera(config: any) {
 
   camera.position.set(0, config.HEIGHT.MIN, 0);
 
+  const initialPitch = config.PITCH.MIN;
+
   const state: CameraState = {
     targetZoom: 1,
     targetYaw: 0,
     currentYaw: 0,
     targetX: 0,
     targetZ: 0,
-    targetPitch: config.PITCH.MIN, // 🔥 ใส่ค่าเริ่มต้น
+
+    targetPitch: initialPitch,
+    currentPitch: initialPitch,   // 🔥 ต้องมี
   };
 
   return { camera, state };
 }
-
 export function updateCamera(
   camera: THREE.PerspectiveCamera,
   state: CameraState,
@@ -39,7 +44,7 @@ export function updateCamera(
 ) {
   const damp = THREE.MathUtils.damp;
 
-  // ================= YAW =================
+  /* ================= YAW ================= */
 
   state.currentYaw +=
     Math.atan2(
@@ -48,21 +53,20 @@ export function updateCamera(
     ) *
     (1 - Math.exp(-config.YAW.DAMP * dt));
 
-  // ================= PITCH (clamp) =================
+  /* ================= ZOOM ================= */
 
-  state.targetPitch = THREE.MathUtils.clamp(
-    state.targetPitch,
-    config.PITCH.MIN,
-    config.PITCH.MAX
+  camera.zoom = damp(
+    camera.zoom,
+    state.targetZoom,
+    config.ZOOM.DAMP,
+    dt
   );
-
-  // ================= ZOOM =================
-
-  camera.zoom = damp(camera.zoom, state.targetZoom, config.ZOOM.DAMP, dt);
 
   const t =
     (camera.zoom - config.ZOOM.MIN) /
     (config.ZOOM.MAX - config.ZOOM.MIN);
+
+  /* ================= HEIGHT + FOV ================= */
 
   const targetHeight = THREE.MathUtils.lerp(
     config.HEIGHT.MIN,
@@ -76,7 +80,30 @@ export function updateCamera(
     t
   );
 
-  // ================= POSITION =================
+  /* ================= BASE PITCH FROM ZOOM ================= */
+
+  const basePitch = THREE.MathUtils.lerp(
+    config.PITCH.MAX,  // zoom in
+    config.PITCH.MIN,  // zoom out → top-down
+    t
+  );
+
+  /* ================= FINAL PITCH ================= */
+
+  const finalTargetPitch = THREE.MathUtils.clamp(
+    basePitch + state.targetPitch,  // gesture offset
+    config.PITCH.MIN,
+    config.PITCH.MAX
+  );
+
+  state.currentPitch = damp(
+    state.currentPitch,
+    finalTargetPitch,
+    config.PITCH.DAMP ?? 6,
+    dt
+  );
+
+  /* ================= POSITION ================= */
 
   camera.position.y = damp(
     camera.position.y,
@@ -99,12 +126,17 @@ export function updateCamera(
     dt
   );
 
-  camera.fov = damp(camera.fov, targetFov, config.FOV.DAMP, dt);
+  camera.fov = damp(
+    camera.fov,
+    targetFov,
+    config.FOV.DAMP,
+    dt
+  );
 
-  // ================= FINAL ROTATION =================
+  /* ================= ROTATION ================= */
 
   camera.rotation.set(
-    state.targetPitch,   // 🔥 ใช้ค่าจาก gesture จริง
+    state.currentPitch,
     state.currentYaw,
     0,
     "YXZ"

@@ -102,7 +102,9 @@ const gyro = bindGyro({
 });
 
 bindGesture({
-  isActive: () => cameraMode === "GESTURE", // zoom ใช้ได้ทุก mode
+  isActive: () =>
+  cameraMode === "GESTURE" ||
+  cameraMode === "GYRO",
 
   getZoom: () => state.targetZoom,
   setZoom: (z) => (state.targetZoom = z),
