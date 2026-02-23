@@ -6,6 +6,8 @@ type FreeOptions = {
   getPosition: () => { x: number; z: number };
   setPosition: (x: number, z: number) => void;
 
+  getYaw: () => number; // ⭐ เพิ่มอันนี้
+
   addYaw: (delta: number) => void;
   addPitch: (delta: number) => void;
 
@@ -92,7 +94,7 @@ export function bindFreeController(options: FreeOptions) {
 
       const touches = e.touches;
 
-      /* ---------- SINGLE PAN ---------- */
+      /* ---------- SINGLE PAN (LOCAL SPACE) ---------- */
 
       if (gestureMode === "single" && touches.length === 1) {
         const t = touches[0];
@@ -103,11 +105,29 @@ export function bindFreeController(options: FreeOptions) {
         const dy = t.clientY - last.y;
 
         const pos = options.getPosition();
+        const yaw = options.getYaw();
 
-        options.setPosition(
-          pos.x - dx * options.moveSpeed,
-          pos.z - dy * options.moveSpeed
-        );
+        // direction vectors
+        const forwardX = Math.sin(yaw);
+        const forwardZ = Math.cos(yaw);
+
+        const rightX = Math.cos(yaw);
+        const rightZ = -Math.sin(yaw);
+
+        const moveForward = -dy * options.moveSpeed;
+        const moveRight = -dx * options.moveSpeed;
+
+        const newX =
+          pos.x +
+          forwardX * moveForward +
+          rightX * moveRight;
+
+        const newZ =
+          pos.z +
+          forwardZ * moveForward +
+          rightZ * moveRight;
+
+        options.setPosition(newX, newZ);
 
         lastTouches.set(t.identifier, {
           x: t.clientX,
@@ -169,20 +189,38 @@ export function bindFreeController(options: FreeOptions) {
   });
 
   /* =========================
-     UPDATE LOOP
+     UPDATE LOOP (LOCAL SPACE)
   ========================= */
 
   function update() {
     if (!options.isActive()) return;
 
     const pos = options.getPosition();
-    let newX = pos.x;
-    let newZ = pos.z;
+    const yaw = options.getYaw();
 
-    if (keys["w"]) newZ -= options.moveSpeed;
-    if (keys["s"]) newZ += options.moveSpeed;
-    if (keys["a"]) newX -= options.moveSpeed;
-    if (keys["d"]) newX += options.moveSpeed;
+    let moveForward = 0;
+    let moveRight = 0;
+
+    if (keys["w"]) moveForward += options.moveSpeed;
+    if (keys["s"]) moveForward -= options.moveSpeed;
+    if (keys["a"]) moveRight -= options.moveSpeed;
+    if (keys["d"]) moveRight += options.moveSpeed;
+
+    const forwardX = Math.sin(yaw);
+    const forwardZ = Math.cos(yaw);
+
+    const rightX = Math.cos(yaw);
+    const rightZ = -Math.sin(yaw);
+
+    const newX =
+      pos.x +
+      forwardX * moveForward +
+      rightX * moveRight;
+
+    const newZ =
+      pos.z +
+      forwardZ * moveForward +
+      rightZ * moveRight;
 
     options.setPosition(newX, newZ);
   }

@@ -12,7 +12,7 @@ import { createGPSService } from "./core/gpsservice";
 import { bindGyro } from "./controls/gyroController";
 import { bindGesture } from "./controls/gestureController";
 import { initUI, type CameraMode } from "./ui/ui";
-import { setFloor} from "./ui/floormanage";
+import { setFloor } from "./ui/floormanage";
 import {
   enableFollow,
   disableFollow,
@@ -20,14 +20,14 @@ import {
 } from "./core/followmanage";
 import { bindFreeController } from "./controls/freeController";
 
-
 /* =============================
    MODE
 ============================= */
 
 let cameraMode: CameraMode = "GESTURE";
 
-const floorButtons = document.querySelectorAll<HTMLButtonElement>(".floor-btn");
+const floorButtons =
+  document.querySelectorAll<HTMLButtonElement>(".floor-btn");
 
 floorButtons.forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -35,15 +35,18 @@ floorButtons.forEach((btn) => {
 
     const changed = setFloor(floor);
     if (!changed) return;
-    disableFollow(); // กดเลือกชั้นเอง ถือว่าไม่อยากให้ตามตำแหน่งแล้ว
-    // เปลี่ยน UI state
-    floorButtons.forEach(b => b.classList.remove("active"));
+
+    disableFollow();
+
+    floorButtons.forEach((b) =>
+      b.classList.remove("active")
+    );
     btn.classList.add("active");
 
-    // โหลด floor จริง
     loadFloor(scene, floor);
   });
 });
+
 /* =============================
    CONFIG
 ============================= */
@@ -52,7 +55,9 @@ const CONFIG = {
   ...CONFIG_JSON,
   PITCH: {
     ...CONFIG_JSON.PITCH,
-    MAX: THREE.MathUtils.degToRad(CONFIG_JSON.PITCH.MAX_DEG),
+    MAX: THREE.MathUtils.degToRad(
+      CONFIG_JSON.PITCH.MAX_DEG
+    ),
   },
 };
 
@@ -80,6 +85,7 @@ function handleLocation(location: any) {
   }
 
   const pos = mapToWorld(x, y, floor);
+
   if (isFollowing()) {
     state.targetX = pos.x;
     state.targetZ = pos.z;
@@ -103,8 +109,8 @@ const gyro = bindGyro({
 
 bindGesture({
   isActive: () =>
-  cameraMode === "GESTURE" ||
-  cameraMode === "GYRO",
+    cameraMode === "GESTURE" ||
+    cameraMode === "GYRO",
 
   getZoom: () => state.targetZoom,
   setZoom: (z) => (state.targetZoom = z),
@@ -123,6 +129,10 @@ bindGesture({
   deadzone: CONFIG.PAN.DEADZONE,
 });
 
+/* =============================
+   FREE CONTROLLER (แก้ตรงนี้)
+============================= */
+
 const free = bindFreeController({
   isActive: () => cameraMode === "FREE",
 
@@ -136,17 +146,20 @@ const free = bindFreeController({
     state.targetZ = z;
   },
 
+  getYaw: () => state.targetYaw, // ⭐ สำคัญ
+
   addYaw: (d) => {
     state.targetYaw += d;
   },
 
   addPitch: (d) => {
-    state.targetPitch += d;  // 👈 ต้องมี targetPitch ใน camera state
+    state.targetPitch += d;
   },
 
   moveSpeed: 0.1,
   rotateSens: 0.005,
 });
+
 /* =============================
    UI
 ============================= */
@@ -184,7 +197,9 @@ const ui = initUI({
   getDebugInfo: () =>
     `ZOOM: ${camera.zoom.toFixed(2)}
 HEIGHT: ${camera.position.y.toFixed(1)}
-YAW: ${THREE.MathUtils.radToDeg(state.currentYaw).toFixed(1)}°`,
+YAW: ${THREE.MathUtils.radToDeg(
+      state.currentYaw
+    ).toFixed(1)}°`,
 
   getPosition: () => ({
     x: camera.position.x,
@@ -193,24 +208,24 @@ YAW: ${THREE.MathUtils.radToDeg(state.currentYaw).toFixed(1)}°`,
   }),
 
   onRequestGPS: async () => {
-  await gps.request();
+    await gps.request();
 
-  const following = isFollowing();
+    const following = isFollowing();
 
-  if (following) {
-    disableFollow();
-    return;
-  }
+    if (following) {
+      disableFollow();
+      return;
+    }
 
-  enableFollow();
+    enableFollow();
 
-  const location = await fetchLocation();
-  handleLocation(location);
-},
+    const location = await fetchLocation();
+    handleLocation(location);
+  },
 
   getGPSInfo: gps.getInfo,
 
-  isFollowing: () => isFollowing(), // 👈 ส่งเข้า UI
+  isFollowing: () => isFollowing(),
 });
 
 /* =============================
@@ -221,7 +236,9 @@ const clock = new THREE.Clock();
 
 function animate() {
   requestAnimationFrame(animate);
+
   const dt = clock.getDelta();
+
   free.update();
 
   updateCamera(camera, state, CONFIG, dt);
