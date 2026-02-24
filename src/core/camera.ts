@@ -65,7 +65,7 @@ export function updateCamera(
     ) *
     (1 - Math.exp(-config.YAW.DAMP * dt));
 
-  /* ================= ZOOM (FOV only) ================= */
+  /* ================= ZOOM ================= */
 
   camera.zoom = damp(
     camera.zoom,
@@ -78,13 +78,13 @@ export function updateCamera(
     (camera.zoom - config.ZOOM.MIN) /
     (config.ZOOM.MAX - config.ZOOM.MIN);
 
-  const targetFov = THREE.MathUtils.lerp(
-    config.FOV.MIN,
-    config.FOV.MAX,
+  /* ================= HEIGHT FROM ZOOM ================= */
+
+  state.targetHeight = THREE.MathUtils.lerp(
+    config.HEIGHT.MIN,
+    config.HEIGHT.MAX,
     t
   );
-
-  /* ================= HEIGHT ================= */
 
   state.currentHeight = damp(
     state.currentHeight,
@@ -94,6 +94,21 @@ export function updateCamera(
   );
 
   camera.position.y = state.currentHeight;
+
+  /* ================= FOV ================= */
+
+  const targetFov = THREE.MathUtils.lerp(
+    config.FOV.MIN,
+    config.FOV.MAX,
+    t
+  );
+
+  camera.fov = damp(
+    camera.fov,
+    targetFov,
+    config.FOV.DAMP,
+    dt
+  );
 
   /* ================= BASE PITCH FROM ZOOM ================= */
 
@@ -129,15 +144,6 @@ export function updateCamera(
     camera.position.z,
     state.targetZ,
     config.CAMERA.DAMP,
-    dt
-  );
-
-  /* ================= FOV ================= */
-
-  camera.fov = damp(
-    camera.fov,
-    targetFov,
-    config.FOV.DAMP,
     dt
   );
 
