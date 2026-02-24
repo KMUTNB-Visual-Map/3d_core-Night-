@@ -179,7 +179,7 @@ input[type="text"]:focus {
 .floor-selector {
     position: fixed;   /* เปลี่ยนจาก absolute */
     right: 0%;
-    top: 300px;
+    top: 100px;
 
     display: flex;
     flex-direction: column;
