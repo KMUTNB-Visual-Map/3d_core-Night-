@@ -22,7 +22,7 @@ import {
 import { bindFreeController } from "./controls/freeController";
 
 /* =============================
-   MODE (อ่านจาก state.json)
+   MODE
 ============================= */
 
 function mapStateToMode(state: number): CameraMode {
@@ -36,9 +36,19 @@ function mapStateToMode(state: number): CameraMode {
   }
 }
 
-let cameraMode: CameraMode = mapStateToMode(
-  STATE_JSON.state
-);
+let cameraMode: CameraMode = mapStateToMode(STATE_JSON.state);
+
+/* =============================
+   CONFIG WRAPPER
+============================= */
+
+const CONFIG = {
+  ...CONFIG_JSON,
+  PITCH: {
+    ...CONFIG_JSON.PITCH,
+    MAX: THREE.MathUtils.degToRad(CONFIG_JSON.PITCH.MAX_DEG),
+  },
+};
 
 /* =============================
    iOS GYRO PERMISSION
@@ -88,20 +98,6 @@ floorButtons.forEach((btn) => {
     currentFloor = floor;
   });
 });
-
-/* =============================
-   CONFIG
-============================= */
-
-const CONFIG = {
-  ...CONFIG_JSON,
-  PITCH: {
-    ...CONFIG_JSON.PITCH,
-    MAX: THREE.MathUtils.degToRad(
-      CONFIG_JSON.PITCH.MAX_DEG
-    ),
-  },
-};
 
 /* =============================
    CORE SETUP
@@ -160,7 +156,7 @@ bindGesture({
 
   zoomMin: CONFIG.ZOOM.MIN,
   zoomMax: CONFIG.ZOOM.MAX,
-  zoomSpeed: 0.002,
+  zoomSpeed: CONFIG.GESTURE.ZOOM_SPEED,
 
   addYaw: (d) => {
     if (cameraMode === "GESTURE") {
@@ -183,7 +179,6 @@ const free = bindFreeController({
     x: state.targetX,
     z: state.targetZ,
   }),
-  getPitch: () => state.targetPitch,
 
   setPosition: (x, z) => {
     state.targetX = x;
@@ -191,6 +186,7 @@ const free = bindFreeController({
   },
 
   getYaw: () => state.targetYaw,
+  getPitch: () => state.targetPitch,
 
   addYaw: (d) => {
     state.targetYaw += d;
@@ -200,8 +196,12 @@ const free = bindFreeController({
     state.targetPitch += d;
   },
 
-  moveSpeed: 0.1,
-  rotateSens: 0.005,
+  getHeight: () => state.targetHeight,
+  setHeight: (h) => (state.targetHeight = h),
+
+  moveSpeed: CONFIG.FREE_CONTROL.MOVE_SPEED,
+  rotateSens: CONFIG.FREE_CONTROL.ROTATE_SENS,
+  zoomSens: CONFIG.FREE_CONTROL.ZOOM_SENS,
 });
 
 /* =============================
@@ -250,7 +250,7 @@ const ui = initUI({
         break;
     }
 
-    await applyModeSideEffect(true); // 🔥 user interaction
+    await applyModeSideEffect(true);
   },
 
   getDebugInfo: () =>
@@ -281,11 +281,12 @@ YAW: ${THREE.MathUtils.radToDeg(
     const location = await fetchLocation();
     handleLocation(location);
   },
-  getYawDeg: () =>
-  THREE.MathUtils.radToDeg(state.currentYaw),
 
-getPitchDeg: () =>
-  THREE.MathUtils.radToDeg(state.currentPitch),
+  getYawDeg: () =>
+    THREE.MathUtils.radToDeg(state.currentYaw),
+
+  getPitchDeg: () =>
+    THREE.MathUtils.radToDeg(state.currentPitch),
 
   getGPSInfo: gps.getInfo,
   isFollowing: () => isFollowing(),
@@ -314,8 +315,6 @@ function animate() {
 ============================= */
 
 async function init() {
-  // ไม่ขอ permission ตอนโหลด
-  // ถ้า initial state = GYRO → จะเปิดหลัง user interaction เท่านั้น
   if (cameraMode !== "GYRO") {
     await applyModeSideEffect(false);
   }

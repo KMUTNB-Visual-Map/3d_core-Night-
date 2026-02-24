@@ -2,13 +2,18 @@ import * as THREE from "three";
 
 export type CameraState = {
   targetZoom: number;
+
   targetYaw: number;
   currentYaw: number;
+
   targetX: number;
   targetZ: number;
 
   targetPitch: number;
-  currentPitch: number;   // ✔ มีจริง ใช้งานจริง
+  currentPitch: number;
+
+  targetHeight: number;
+  currentHeight: number;
 };
 
 export function createCamera(config: any) {
@@ -19,23 +24,30 @@ export function createCamera(config: any) {
     5000
   );
 
-  camera.position.set(0, config.HEIGHT.MIN, 0);
-
+  const initialHeight = config.HEIGHT.MIN;
   const initialPitch = config.PITCH.MIN;
+
+  camera.position.set(0, initialHeight, 0);
 
   const state: CameraState = {
     targetZoom: 1,
+
     targetYaw: 0,
     currentYaw: 0,
+
     targetX: 0,
     targetZ: 0,
 
     targetPitch: initialPitch,
-    currentPitch: initialPitch,   // 🔥 ต้องมี
+    currentPitch: initialPitch,
+
+    targetHeight: initialHeight,
+    currentHeight: initialHeight,
   };
 
   return { camera, state };
 }
+
 export function updateCamera(
   camera: THREE.PerspectiveCamera,
   state: CameraState,
@@ -53,7 +65,7 @@ export function updateCamera(
     ) *
     (1 - Math.exp(-config.YAW.DAMP * dt));
 
-  /* ================= ZOOM ================= */
+  /* ================= ZOOM (FOV only) ================= */
 
   camera.zoom = damp(
     camera.zoom,
@@ -66,32 +78,33 @@ export function updateCamera(
     (camera.zoom - config.ZOOM.MIN) /
     (config.ZOOM.MAX - config.ZOOM.MIN);
 
-  /* ================= HEIGHT + FOV ================= */
-
-  const targetHeight = THREE.MathUtils.lerp(
-    config.HEIGHT.MIN,
-    config.HEIGHT.MAX,
-    t
-  );
-
   const targetFov = THREE.MathUtils.lerp(
     config.FOV.MIN,
     config.FOV.MAX,
     t
   );
 
+  /* ================= HEIGHT ================= */
+
+  state.currentHeight = damp(
+    state.currentHeight,
+    state.targetHeight,
+    config.HEIGHT.DAMP,
+    dt
+  );
+
+  camera.position.y = state.currentHeight;
+
   /* ================= BASE PITCH FROM ZOOM ================= */
 
   const basePitch = THREE.MathUtils.lerp(
-    config.PITCH.MAX,  // zoom in
-    config.PITCH.MIN,  // zoom out → top-down
+    config.PITCH.MAX,
+    config.PITCH.MIN,
     t
   );
 
-  /* ================= FINAL PITCH ================= */
-
   const finalTargetPitch = THREE.MathUtils.clamp(
-    basePitch + state.targetPitch,  // gesture offset
+    basePitch + state.targetPitch,
     config.PITCH.MIN,
     config.PITCH.MAX
   );
@@ -104,13 +117,6 @@ export function updateCamera(
   );
 
   /* ================= POSITION ================= */
-
-  camera.position.y = damp(
-    camera.position.y,
-    targetHeight,
-    config.HEIGHT.DAMP,
-    dt
-  );
 
   camera.position.x = damp(
     camera.position.x,
@@ -125,6 +131,8 @@ export function updateCamera(
     config.CAMERA.DAMP,
     dt
   );
+
+  /* ================= FOV ================= */
 
   camera.fov = damp(
     camera.fov,

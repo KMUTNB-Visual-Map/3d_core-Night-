@@ -11,7 +11,7 @@
     "DAMP": 8
   },
   "PITCH": {
-    "MIN": -1, 
+    "MIN": -1,
     "MAX_DEG": 70,
     "DAMP": 5
   },
@@ -30,11 +30,24 @@
   "CAMERA": {
     "DAMP": 5
   },
-  "state":1,
+
+  "FREE_CONTROL": {
+    "MOVE_SPEED": 0.1,
+    "ROTATE_SENS": 0.0005,
+    "ZOOM_SENS": 0.005
+  },
+
+  "GESTURE": {
+    "ZOOM_SPEED": 0.002
+  },
+
+  "state": 1,
+
   "ui": {
-    "enabled": 1,
+    "enabled": 0,
     "allowModeSwitch": true
   },
+
   "camera": {
     "pitchMinDeg": -90,
     "pitchMaxDeg": -50,
