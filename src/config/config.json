@@ -29,5 +29,16 @@
   },
   "CAMERA": {
     "DAMP": 5
+  },
+  "state":1,
+  "ui": {
+    "enabled": 1,
+    "allowModeSwitch": true
+  },
+  "camera": {
+    "pitchMinDeg": -90,
+    "pitchMaxDeg": -50,
+    "minHeight": 9,
+    "maxHeight": 60
   }
 }

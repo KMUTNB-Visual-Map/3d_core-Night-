@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import CONFIG_JSON from "./config/config.json";
+import STATE_JSON from "./config/state.json";
 
 import { setBrowserZoomLock } from "./core/browserlock";
 import { createScene } from "./core/scene";
@@ -21,13 +22,57 @@ import {
 import { bindFreeController } from "./controls/freeController";
 
 /* =============================
-   MODE
+   MODE (อ่านจาก state.json)
 ============================= */
 
-let cameraMode: CameraMode = "GESTURE";
+function mapStateToMode(state: number): CameraMode {
+  switch (state) {
+    case 1:
+      return "GYRO";
+    case 2:
+      return "FREE";
+    default:
+      return "FREE";
+  }
+}
+
+let cameraMode: CameraMode = mapStateToMode(
+  STATE_JSON.state
+);
+
+/* =============================
+   iOS GYRO PERMISSION
+============================= */
+
+async function requestGyroPermissionIfNeeded(): Promise<boolean> {
+  if (
+    typeof DeviceOrientationEvent !== "undefined" &&
+    typeof (DeviceOrientationEvent as any).requestPermission === "function"
+  ) {
+    try {
+      const response = await (DeviceOrientationEvent as any).requestPermission();
+      return response === "granted";
+    } catch {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/* =============================
+   FLOOR BUTTON
+============================= */
 
 const floorButtons =
   document.querySelectorAll<HTMLButtonElement>(".floor-btn");
+
+function updateFloorButtons(floor: number) {
+  floorButtons.forEach((btn) => {
+    const btnFloor = Number(btn.textContent);
+    btn.classList.toggle("active", btnFloor === floor);
+  });
+}
 
 floorButtons.forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -37,13 +82,10 @@ floorButtons.forEach((btn) => {
     if (!changed) return;
 
     disableFollow();
-
-    floorButtons.forEach((b) =>
-      b.classList.remove("active")
-    );
-    btn.classList.add("active");
+    updateFloorButtons(floor);
 
     loadFloor(scene, floor);
+    currentFloor = floor;
   });
 });
 
@@ -82,6 +124,7 @@ function handleLocation(location: any) {
   if (isFollowing() && floor !== currentFloor) {
     loadFloor(scene, floor);
     currentFloor = floor;
+    updateFloorButtons(floor);
   }
 
   const pos = mapToWorld(x, y, floor);
@@ -130,7 +173,7 @@ bindGesture({
 });
 
 /* =============================
-   FREE CONTROLLER (แก้ตรงนี้)
+   FREE CONTROLLER
 ============================= */
 
 const free = bindFreeController({
@@ -140,13 +183,14 @@ const free = bindFreeController({
     x: state.targetX,
     z: state.targetZ,
   }),
+  getPitch: () => state.targetPitch,
 
   setPosition: (x, z) => {
     state.targetX = x;
     state.targetZ = z;
   },
 
-  getYaw: () => state.targetYaw, // ⭐ สำคัญ
+  getYaw: () => state.targetYaw,
 
   addYaw: (d) => {
     state.targetYaw += d;
@@ -161,37 +205,52 @@ const free = bindFreeController({
 });
 
 /* =============================
+   MODE SIDE EFFECT
+============================= */
+
+async function applyModeSideEffect(fromUser = false) {
+  if (cameraMode === "FREE") {
+    disableFollow();
+  }
+
+  if (cameraMode === "GYRO") {
+    if (fromUser) {
+      const granted = await requestGyroPermissionIfNeeded();
+      if (!granted) {
+        console.warn("Gyro permission denied");
+        cameraMode = "GESTURE";
+        return;
+      }
+    }
+
+    gyro.enable();
+    setBrowserZoomLock(true);
+  } else {
+    setBrowserZoomLock(false);
+  }
+}
+
+/* =============================
    UI
 ============================= */
 
 const ui = initUI({
   getMode: () => cameraMode,
 
-  toggleMode: () => {
+  toggleMode: async () => {
     switch (cameraMode) {
       case "GESTURE":
         cameraMode = "FREE";
         break;
-
       case "FREE":
         cameraMode = "GYRO";
         break;
-
       case "GYRO":
         cameraMode = "GESTURE";
         break;
     }
 
-    if (cameraMode === "FREE") {
-      disableFollow();
-    }
-
-    if (cameraMode === "GYRO") {
-      gyro.enable();
-      setBrowserZoomLock(true);
-    } else {
-      setBrowserZoomLock(false);
-    }
+    await applyModeSideEffect(true); // 🔥 user interaction
   },
 
   getDebugInfo: () =>
@@ -222,9 +281,13 @@ YAW: ${THREE.MathUtils.radToDeg(
     const location = await fetchLocation();
     handleLocation(location);
   },
+  getYawDeg: () =>
+  THREE.MathUtils.radToDeg(state.currentYaw),
+
+getPitchDeg: () =>
+  THREE.MathUtils.radToDeg(state.currentPitch),
 
   getGPSInfo: gps.getInfo,
-
   isFollowing: () => isFollowing(),
 });
 
@@ -240,7 +303,6 @@ function animate() {
   const dt = clock.getDelta();
 
   free.update();
-
   updateCamera(camera, state, CONFIG, dt);
 
   ui.update();
@@ -252,6 +314,12 @@ function animate() {
 ============================= */
 
 async function init() {
+  // ไม่ขอ permission ตอนโหลด
+  // ถ้า initial state = GYRO → จะเปิดหลัง user interaction เท่านั้น
+  if (cameraMode !== "GYRO") {
+    await applyModeSideEffect(false);
+  }
+
   const location = await fetchLocation();
   handleLocation(location);
 

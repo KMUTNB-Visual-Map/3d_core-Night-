@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import CONFIG_JSON from "../config/config.json";
 
 type FreeOptions = {
   isActive: () => boolean;
@@ -6,14 +7,38 @@ type FreeOptions = {
   getPosition: () => { x: number; z: number };
   setPosition: (x: number, z: number) => void;
 
-  getYaw: () => number; // ⭐ เพิ่มอันนี้
+  getYaw: () => number;
+  getPitch: () => number;
 
   addYaw: (delta: number) => void;
   addPitch: (delta: number) => void;
 
+  getHeight: () => number;      // ⭐ เพิ่ม
+  setHeight: (h: number) => void; // ⭐ เพิ่ม
+
   moveSpeed: number;
   rotateSens: number;
+  zoomSens: number;             // ⭐ sensitivity pinch
 };
+
+/* =========================
+   PITCH LIMIT FROM CONFIG
+========================= */
+
+const MIN_PITCH = THREE.MathUtils.degToRad(
+  CONFIG_JSON.camera?.pitchMinDeg ?? 30
+);
+
+const MAX_PITCH = THREE.MathUtils.degToRad(
+  CONFIG_JSON.camera?.pitchMaxDeg ?? 60
+);
+
+const MIN_HEIGHT = CONFIG_JSON.camera?.minHeight ?? 5;
+const MAX_HEIGHT = CONFIG_JSON.camera?.maxHeight ?? 200;
+
+function clamp(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
+}
 
 export function bindFreeController(options: FreeOptions) {
   const keys: Record<string, boolean> = {};
@@ -23,6 +48,7 @@ export function bindFreeController(options: FreeOptions) {
 
   let gestureMode: "none" | "single" | "multi" = "none";
   let lastTouches = new Map<number, { x: number; y: number }>();
+  let lastPinchDistance = 0;
 
   /* =========================
      KEYBOARD (WASD)
@@ -82,6 +108,12 @@ export function bindFreeController(options: FreeOptions) {
           y: t.clientY,
         });
       }
+
+      if (e.touches.length >= 2) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        lastPinchDistance = Math.sqrt(dx * dx + dy * dy);
+      }
     },
     { passive: false }
   );
@@ -94,7 +126,7 @@ export function bindFreeController(options: FreeOptions) {
 
       const touches = e.touches;
 
-      /* ---------- SINGLE PAN (LOCAL SPACE) ---------- */
+      /* ---------- SINGLE MOVE ---------- */
 
       if (gestureMode === "single" && touches.length === 1) {
         const t = touches[0];
@@ -107,7 +139,6 @@ export function bindFreeController(options: FreeOptions) {
         const pos = options.getPosition();
         const yaw = options.getYaw();
 
-        // direction vectors
         const forwardX = Math.sin(yaw);
         const forwardZ = Math.cos(yaw);
 
@@ -117,17 +148,14 @@ export function bindFreeController(options: FreeOptions) {
         const moveForward = -dy * options.moveSpeed;
         const moveRight = -dx * options.moveSpeed;
 
-        const newX =
+        options.setPosition(
           pos.x +
-          forwardX * moveForward +
-          rightX * moveRight;
-
-        const newZ =
+            forwardX * moveForward +
+            rightX * moveRight,
           pos.z +
-          forwardZ * moveForward +
-          rightZ * moveRight;
-
-        options.setPosition(newX, newZ);
+            forwardZ * moveForward +
+            rightZ * moveRight
+        );
 
         lastTouches.set(t.identifier, {
           x: t.clientX,
@@ -135,33 +163,52 @@ export function bindFreeController(options: FreeOptions) {
         });
       }
 
-      /* ---------- MULTI ROTATE / PITCH ---------- */
+      /* ---------- MULTI TOUCH ---------- */
 
       if (gestureMode === "multi" && touches.length >= 2) {
         const t1 = touches[0];
         const t2 = touches[1];
 
+        const dx = t1.clientX - t2.clientX;
+        const dy = t1.clientY - t2.clientY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        /* 🔥 PINCH → HEIGHT */
+        const deltaDistance = distance - lastPinchDistance;
+
+        if (Math.abs(deltaDistance) > 2) {
+          const currentHeight = options.getHeight();
+          const nextHeight = clamp(
+            currentHeight - deltaDistance * options.zoomSens,
+            MIN_HEIGHT,
+            MAX_HEIGHT
+          );
+          options.setHeight(nextHeight);
+        }
+
+        lastPinchDistance = distance;
+
+        /* 🔥 TWO FINGER SWIPE → PITCH */
+
         const last1 = lastTouches.get(t1.identifier);
         const last2 = lastTouches.get(t2.identifier);
         if (!last1 || !last2) return;
 
-        const horizontalGap = Math.abs(t1.clientX - t2.clientX);
-        if (horizontalGap < MIN_HORIZONTAL_GAP) return;
-
         const dy1 = t1.clientY - last1.y;
         const dy2 = t2.clientY - last2.y;
 
-        if (
-          Math.abs(dy1) < MIN_VERTICAL_MOVE &&
-          Math.abs(dy2) < MIN_VERTICAL_MOVE
-        )
-          return;
-
-        if (dy1 * dy2 < 0) {
-          options.addYaw((dy1 - dy2) * options.rotateSens);
-        } else if (dy1 * dy2 > 0) {
+        if (dy1 * dy2 > 0) {
           const avg = (dy1 + dy2) / 2;
-          options.addPitch(-avg * options.rotateSens);
+          const delta = -avg * options.rotateSens;
+
+          const currentPitch = options.getPitch();
+          const nextPitch = clamp(
+            currentPitch + delta,
+            MIN_PITCH,
+            MAX_PITCH
+          );
+
+          options.addPitch(nextPitch - currentPitch);
         }
 
         lastTouches.set(t1.identifier, {
@@ -178,18 +225,13 @@ export function bindFreeController(options: FreeOptions) {
     { passive: false }
   );
 
-  window.addEventListener("touchend", (e) => {
-    for (let i = 0; i < e.changedTouches.length; i++) {
-      lastTouches.delete(e.changedTouches[i].identifier);
-    }
-
-    if (e.touches.length === 0) {
-      gestureMode = "none";
-    }
+  window.addEventListener("touchend", () => {
+    lastPinchDistance = 0;
+    gestureMode = "none";
   });
 
   /* =========================
-     UPDATE LOOP (LOCAL SPACE)
+     UPDATE LOOP
   ========================= */
 
   function update() {
@@ -212,21 +254,15 @@ export function bindFreeController(options: FreeOptions) {
     const rightX = Math.cos(yaw);
     const rightZ = -Math.sin(yaw);
 
-    const newX =
+    options.setPosition(
       pos.x +
-      forwardX * moveForward +
-      rightX * moveRight;
-
-    const newZ =
+        forwardX * moveForward +
+        rightX * moveRight,
       pos.z +
-      forwardZ * moveForward +
-      rightZ * moveRight;
-
-    options.setPosition(newX, newZ);
+        forwardZ * moveForward +
+        rightZ * moveRight
+    );
   }
 
-  return {
-    update,
-    dispose() {},
-  };
+  return { update, dispose() {} };
 }
