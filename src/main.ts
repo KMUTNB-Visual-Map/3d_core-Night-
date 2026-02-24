@@ -75,17 +75,24 @@ function updateFloorButtons(floor: number) {
 }
 
 floorButtons.forEach((btn) => {
-  btn.addEventListener("click", () => {
+  btn.addEventListener("click", async () => {
     const floor = Number(btn.textContent);
 
     const changed = setFloor(floor);
     if (!changed) return;
 
+    /* 🔴 ออกจาก navigation mode */
     disableFollow();
+
+    cameraMode = "FREE";
+    setBrowserZoomLock(false);
+
     updateFloorButtons(floor);
 
     loadFloor(scene, floor);
     currentFloor = floor;
+
+    console.log("Floor changed → switch to FREE mode");
   });
 });
 
@@ -179,23 +186,20 @@ bindGesture({
 const free = bindFreeController({
   isActive: () => cameraMode === "FREE",
 
+  /* ---------- POSITION ---------- */
   getPosition: () => ({
     x: state.targetX,
     z: state.targetZ,
   }),
-  getHeight: () => camera.position.y,
-  setHeight: (h) => {
-    camera.position.y = h;
-  },
-  zoomSens: 0.2,
-  getPitch: () => state.targetPitch,
 
   setPosition: (x, z) => {
     state.targetX = x;
     state.targetZ = z;
   },
 
+  /* ---------- ROTATION ---------- */
   getYaw: () => state.targetYaw,
+  getPitch: () => state.targetPitch,
 
   addYaw: (d) => {
     state.targetYaw += d;
@@ -205,8 +209,20 @@ const free = bindFreeController({
     state.targetPitch += d;
   },
 
-  moveSpeed: 0.1,
-  rotateSens: 0.005,
+  /* ---------- HEIGHT ---------- */
+  getHeight: () => camera.position.y,
+
+  setHeight: (h) => {
+    camera.position.y = h;
+  },
+
+  /* ---------- CONFIG DRIVEN ---------- */
+  moveSpeed: CONFIG.FREE_CONTROL.MOVE_SPEED,
+
+  yawSens: CONFIG.FREE_CONTROL.ROTATE_SENS,
+  pitchSens: CONFIG.FREE_CONTROL.ROTATE_SENS * 1.5, // pitch ไวกว่าเล็กน้อย
+
+  zoomSens: CONFIG.FREE_CONTROL.ZOOM_SENS,
 });
 
 /* =============================
@@ -269,30 +285,37 @@ YAW: ${THREE.MathUtils.radToDeg(
   }),
 
   onRequestGPS: async () => {
-    // 1️⃣ ขอ GPS permission
 
-    // 2️⃣ ขอ Gyro permission (iOS)
+    // 🔁 ถ้ากำลัง follow อยู่ → ปิด
+    if (isFollowing()) {
+      disableFollow();
+
+      cameraMode = "FREE";
+      setBrowserZoomLock(false);
+
+      console.log("GPS OFF → FREE mode");
+      return;
+    }
+
+    // 🟢 เปิด GPS mode
+
     const gyroGranted = await requestGyroPermissionIfNeeded();
     if (!gyroGranted) {
       console.warn("Gyro permission denied");
       return;
     }
 
-    // 3️⃣ เข้า GYRO mode
     cameraMode = "GYRO";
 
-    // 4️⃣ enable gyro
     await gyro.enable();
 
-    // 5️⃣ เปิด follow
     enableFollow();
-
-    // 6️⃣ ล็อค zoom
     setBrowserZoomLock(true);
 
-    // 7️⃣ ดึง location ครั้งแรก
     const location = await fetchLocation();
     handleLocation(location);
+
+    console.log("GPS ON → GYRO mode");
   },
   getYawDeg: () =>
   THREE.MathUtils.radToDeg(state.currentYaw),
@@ -327,6 +350,9 @@ function animate() {
 ============================= */
 
 async function init() {
+  loadFloor(scene, 1);
+  currentFloor = 1;
+  updateFloorButtons(1);
   // ไม่ขอ permission ตอนโหลด
   // ถ้า initial state = GYRO → จะเปิดหลัง user interaction เท่านั้น
   await applyModeSideEffect(false);

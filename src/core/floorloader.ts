@@ -77,7 +77,7 @@ export function loadFloor(scene: THREE.Scene, floor: number) {
          Position floor
       ============================= */
 
-      activeFloor.position.y = floor * FLOOR_HEIGHT;
+      activeFloor.position.y = 1 * FLOOR_HEIGHT;
 
       scene.add(activeFloor);
     },

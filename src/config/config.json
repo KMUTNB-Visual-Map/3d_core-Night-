@@ -6,8 +6,8 @@
     "DAMP": 10
   },
   "HEIGHT": {
-    "MIN": 13,
-    "MAX": 100,
+    "MIN": 5,
+    "MAX": 40,
     "DAMP": 8
   },
   "PITCH": {
@@ -49,9 +49,9 @@
   },
 
   "camera": {
-    "pitchMinDeg": -90,
+    "pitchMinDeg": -110,
     "pitchMaxDeg": -50,
-    "minHeight": 9,
-    "maxHeight": 60
+    "minHeight": 0,
+    "maxHeight": 40
   }
 }
