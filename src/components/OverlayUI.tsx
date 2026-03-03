@@ -1,4 +1,3 @@
-import React from 'react';
 import SearchBox from './SearchBox';
 import FloorSelector from './FloorSelector';
 import SetupModals from './SetupModals'; 
@@ -11,16 +10,29 @@ export default function OverlayUI() {
     cameraMode,
     cycleCameraMode,
     userPosition,
+    rawGpsPosition,
+    convertedGpsMeters,
   } = useNavStore();
 
   const [userX, , userZ] = userPosition;
+  const rawLat = rawGpsPosition?.[0];
+  const rawLng = rawGpsPosition?.[1];
+  const absX = convertedGpsMeters?.[0];
+  const absZ = convertedGpsMeters?.[1];
 
   return (
     <div className="fixed inset-0 pointer-events-none z-[999] p-6 flex flex-col justify-between">
       <SetupModals />
 
-      <div className="absolute top-6 left-6 pointer-events-none">
+      <div className="absolute top-6 right-6 pointer-events-none z-[1001]">
         <div className="bg-black/90 px-3 py-2 rounded-xl text-xs text-white font-bold backdrop-blur-sm">
+          <div className="text-[10px] text-blue-300">RAW (Lat/Lng)</div>
+          <div>Lat: {rawLat !== undefined ? rawLat.toFixed(6) : '-'}</div>
+          <div>Lng: {rawLng !== undefined ? rawLng.toFixed(6) : '-'}</div>
+          <div className="mt-2 text-[10px] text-emerald-300">CONVERTED ABS (m)</div>
+          <div>X: {absX !== undefined ? absX.toFixed(2) : '-'}</div>
+          <div>Z: {absZ !== undefined ? absZ.toFixed(2) : '-'}</div>
+          <div className="mt-2 text-[10px] text-amber-300">DELTA FROM START (m)</div>
           <div>X: {userX.toFixed(2)}</div>
           <div>Z: {userZ.toFixed(2)}</div>
         </div>

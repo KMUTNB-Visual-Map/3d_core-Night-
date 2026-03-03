@@ -13,6 +13,9 @@ export class PositioningManager {
 
   constructor(private guestId: string) {}
 
+  private readonly gpsUpdateIntervalMs = 2000;
+  private lastGpsUpdateAt = 0;
+
   private mode: PositionMode = "GPS";
 
   private currentPosition: Position = {
@@ -119,8 +122,15 @@ export class PositioningManager {
 
   startGPSMode(onUpdate: (pos: Position) => void) {
     this.mode = "GPS";
+    this.lastGpsUpdateAt = 0;
 
     startGPS((gpsPos) => {
+      const now = Date.now();
+      if (now - this.lastGpsUpdateAt < this.gpsUpdateIntervalMs) {
+        return;
+      }
+      this.lastGpsUpdateAt = now;
+
       const position: Position = {
         x: gpsPos.x,
         y: gpsPos.y,

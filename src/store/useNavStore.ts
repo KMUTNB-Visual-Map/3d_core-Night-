@@ -3,9 +3,11 @@ import { PositioningManager } from '../core/positioning';
 
 let positioning: PositioningManager | null = null;
 let gpsOrigin: { x: number, y: number } | null = null;
+let startDeadzoneUnlocked = false;
 
 // 🟢 ค่าคงที่สำหรับแปลงพิกัด GPS เป็นเมตร
 const METER_SCALE = 111319;
+const START_DEADZONE_METERS = 1;
 
 interface NavState {
   userId: string | null;
@@ -17,6 +19,8 @@ interface NavState {
   userActualFloor: number | null;
 
   userPosition: [number, number, number];
+  rawGpsPosition: [number, number] | null;
+  convertedGpsMeters: [number, number] | null;
   targetLocation: any | null;
 
   cameraMode: 'FREE' | 'FOLLOW';
@@ -44,6 +48,8 @@ export const useNavStore = create<NavState>((set, get) => ({
   userActualFloor: null,
 
   userPosition: [0, 0, 0],
+  rawGpsPosition: null,
+  convertedGpsMeters: null,
   targetLocation: null,
 
   cameraMode: 'FREE',
@@ -110,9 +116,12 @@ export const useNavStore = create<NavState>((set, get) => ({
 
     if (newState) {
       gpsOrigin = null;
+      startDeadzoneUnlocked = false;
 
       set({
         userPosition: [0, 0, 0],
+        rawGpsPosition: null,
+        convertedGpsMeters: null,
         isFollowing: true,
         cameraMode: 'FOLLOW',
       });
@@ -128,6 +137,15 @@ export const useNavStore = create<NavState>((set, get) => ({
         // 🔹 แปลงเป็นเมตร
         const relativeX = (pos.x - gpsOrigin.x) * METER_SCALE;
         const relativeZ = (pos.y - gpsOrigin.y) * METER_SCALE;
+        const distanceFromStart = Math.hypot(relativeX, relativeZ);
+
+        if (!startDeadzoneUnlocked && distanceFromStart > START_DEADZONE_METERS) {
+          startDeadzoneUnlocked = true;
+        }
+
+        const latRad = (pos.x * Math.PI) / 180;
+        const convertedX = pos.y * METER_SCALE * Math.cos(latRad);
+        const convertedZ = pos.x * METER_SCALE;
 
         console.log(
           `🚶 Walking: X=${relativeX.toFixed(2)}, Z=${relativeZ.toFixed(2)}`
@@ -135,7 +153,11 @@ export const useNavStore = create<NavState>((set, get) => ({
 
         // 🔥 อัปเดตตำแหน่ง + floor จริง
         set({
-          userPosition: [relativeX, 0, relativeZ],
+          userPosition: startDeadzoneUnlocked
+            ? [relativeX, 0, relativeZ]
+            : [0, 0, 0],
+          rawGpsPosition: [pos.x, pos.y],
+          convertedGpsMeters: [convertedX, convertedZ],
           userActualFloor: pos.floor_id ?? get().userActualFloor,
         });
 
@@ -152,9 +174,12 @@ export const useNavStore = create<NavState>((set, get) => ({
       set({
         isFollowing: false,
         cameraMode: 'FREE',
+        rawGpsPosition: null,
+        convertedGpsMeters: null,
       });
 
       gpsOrigin = null;
+      startDeadzoneUnlocked = false;
 
       if (positioning) {
         positioning.startManualMode();
