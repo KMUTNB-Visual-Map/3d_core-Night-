@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavStore } from '../store/useNavStore';
+import { requestMotionPermission } from '../core/gps';
 
 export default function SetupModals() {
   const { setupStep, setSetupStep, confirmUserFloor, setAvatarType, avatarType, cancelSetup } = useNavStore();
@@ -50,7 +51,8 @@ export default function SetupModals() {
             
             {/* ปุ่มนักเรียนหญิง */}
             <button 
-              onClick={() => {
+              onClick={async () => {
+                await requestMotionPermission();
                 setAvatarType('female');
                 setSetupStep('none'); // เลือกเสร็จ ปิด Pop-up
               }}
@@ -64,7 +66,8 @@ export default function SetupModals() {
 
             {/* ปุ่มนักเรียนชาย */}
             <button 
-              onClick={() => {
+              onClick={async () => {
+                await requestMotionPermission();
                 setAvatarType('male');
                 setSetupStep('none'); // เลือกเสร็จ ปิด Pop-up
               }}

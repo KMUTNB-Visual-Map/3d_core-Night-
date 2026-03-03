@@ -1,20 +1,28 @@
 import { useNavStore } from '../store/useNavStore';
+import { requestLocationPermission } from '../core/gps';
 
 export default function GPSButton() {
   const isFollowing = useNavStore((state) => state.isFollowing);
   const toggleFollowing = useNavStore((state) => state.toggleFollowing);
 
+  const baseButton = 'px-5 py-3 rounded-xl shadow-2xl transition-all active:scale-95 pointer-events-auto flex items-center justify-center border-2 font-black text-sm fixed bottom-6 left-6 z-[9999]';
+
   return (
     <button
       onClick={() => {
         console.log("🛰️ GPS Clicked!");
+        if (!isFollowing) {
+          // Fire-and-forget to keep it within the same user gesture
+          requestLocationPermission().catch((err) => {
+            console.warn("Location permission request failed", err);
+          });
+        }
         toggleFollowing();
       }}
-      // วางซ้ายล่าง (left-6 bottom-6) และอยู่หน้าสุด (z-[9999])
-      className={`fixed bottom-6 left-6 z-[9999] p-4 rounded-2xl shadow-2xl font-bold border-2 transition-all pointer-events-auto ${
-        isFollowing 
-          ? 'bg-blue-600 text-white border-blue-400 scale-105' 
-          : 'bg-white text-slate-800 border-slate-300 hover:bg-slate-50'
+      className={`${baseButton} ${
+        isFollowing
+          ? 'bg-blue-600 text-white border-blue-400 scale-105'
+          : 'bg-white text-slate-800 border-slate-200 hover:bg-slate-50'
       }`}
     >
       <div className="flex items-center gap-2">

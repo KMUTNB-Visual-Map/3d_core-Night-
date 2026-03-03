@@ -5,11 +5,26 @@ import SetupModals from './SetupModals';
 import { useNavStore } from '../store/useNavStore';
 
 export default function OverlayUI() {
-  const { isFollowing, toggleFollowing, cameraMode, cycleCameraMode } = useNavStore();
+  const {
+    isFollowing,
+    toggleFollowing,
+    cameraMode,
+    cycleCameraMode,
+    userPosition,
+  } = useNavStore();
+
+  const [userX, , userZ] = userPosition;
 
   return (
     <div className="fixed inset-0 pointer-events-none z-[999] p-6 flex flex-col justify-between">
       <SetupModals />
+
+      <div className="absolute top-6 left-6 pointer-events-none">
+        <div className="bg-black/90 px-3 py-2 rounded-xl text-xs text-white font-bold backdrop-blur-sm">
+          <div>X: {userX.toFixed(2)}</div>
+          <div>Z: {userZ.toFixed(2)}</div>
+        </div>
+      </div>
 
       <div className="flex justify-center w-full pointer-events-auto">
         <SearchBox />
