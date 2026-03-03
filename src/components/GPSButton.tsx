@@ -1,4 +1,3 @@
-import React from 'react';
 import { useNavStore } from '../store/useNavStore';
 
 export default function GPSButton() {

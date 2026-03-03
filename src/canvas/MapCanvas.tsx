@@ -1,4 +1,4 @@
-import React, { Suspense, useEffect, useRef } from 'react';
+import { Suspense, useEffect, useRef } from 'react';
 import {
   OrbitControls,
   PerspectiveCamera,
@@ -8,7 +8,7 @@ import {
 import { useFrame, useThree } from '@react-three/fiber';
 import { useNavStore } from '../store/useNavStore';
 import FloorModel from './FloorModel';
-import Avatar from './Avatar';
+import Avatar from './Avatar.jsx';
 import * as THREE from 'three';
 
 export default function MapCanvas() {
@@ -49,10 +49,7 @@ export default function MapCanvas() {
   // -----------------------------
   useEffect(() => {
     const handleOrientation = (e: DeviceOrientationEvent) => {
-      if (
-        (cameraMode === 'GYRO' || cameraMode === 'FOLLOW') &&
-        e.alpha !== null
-      ) {
+      if (cameraMode === 'FOLLOW' && e.alpha !== null) {
         if (gyro.current.initial === null) {
           gyro.current.initial = e.alpha;
         }
@@ -62,7 +59,7 @@ export default function MapCanvas() {
       }
     };
 
-    if (cameraMode === 'GYRO' || cameraMode === 'FOLLOW') {
+    if (cameraMode === 'FOLLOW') {
       window.addEventListener('deviceorientation', handleOrientation, true);
     } else {
       gyro.current.initial = null;
@@ -77,7 +74,7 @@ export default function MapCanvas() {
   // Camera Follow Logic
   // -----------------------------
   useFrame((state) => {
-    if (cameraMode !== 'GYRO' && cameraMode !== 'FOLLOW') return;
+    if (cameraMode !== 'FOLLOW') return;
     if (!shouldRenderAvatar) return;
 
     const radius = 3.2;
